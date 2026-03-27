@@ -259,7 +259,7 @@ class FreeCell {
     updatePos(card, type, gIdx, cIdx) {
         const slot = document.querySelector(`[data-type="${type}"]${type==='found' ? `[data-suit="${gIdx}"]` : `[data-idx="${gIdx}"]`}`);
         const x = slot.offsetLeft;
-        const y = slot.offsetTop + (type === 'tab' ? cIdx * 50 : 0); // 50px offset ensures header visibility
+        const y = slot.offsetTop + (type === 'tab' ? cIdx * 65 : 0); // 50px offset ensures header visibility
         card.el.style.transform = `translate(${x}px, ${y}px)`;
         card.el.style.zIndex = cIdx + 100;
     }
