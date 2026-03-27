@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Senior Solitaire Mobile</title>
+    <title>Senior Solitaire</title>
     <style>
         :root {
             --bg: #3db371; 
@@ -16,7 +16,7 @@
             --highlight: #ffea00;
             --card-w: 110px;
             --card-h: 160px;
-            --board-width: 1040px; /* Base width for scaling */
+            --board-width: 1040px; 
         }
 
         [data-theme="dark"] {
@@ -31,11 +31,10 @@
             width: 100%; height: 100%;
             background-color: var(--bg);
             font-family: 'Segoe UI', Arial, sans-serif;
-            overflow: hidden; /* Prevents accidental scrolling */
+            overflow: hidden;
             touch-action: manipulation;
         }
 
-        /* Top Controls Area */
         .controls {
             width: 100%;
             height: 60px;
@@ -64,17 +63,16 @@
         button:active { transform: translateY(2px); box-shadow: 0 1px #222; }
         .btn-undo { background: #f39c12; color: white; }
 
-        /* The Scaler: This container shrinks the 1040px board to fit your phone width */
         #scaler {
             transform-origin: top left;
             position: absolute;
-            top: 70px; /* Below header */
+            top: 70px;
             left: 0;
         }
 
         #board {
             width: var(--board-width);
-            height: 1200px;
+            height: 1400px;
             position: relative;
         }
 
@@ -122,11 +120,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            height: 35px;
+            height: 40px; /* Slightly taller for larger icons */
         }
 
-        .card-rank { font-size: 2.8rem; font-weight: 900; }
-        .card-suit-small { font-size: 2.4rem; font-weight: bold; }
+        .card-rank { font-size: 2.8rem; font-weight: 900; line-height: 1; }
+        .card-suit-small { font-size: 2.8rem; font-weight: 900; line-height: 1; }
         
         .card-center {
             flex-grow: 1;
@@ -159,19 +157,16 @@
 
 <div id="scaler">
     <div id="board">
-        <!-- Freecells -->
         <div class="slot" style="left: 10px; top: 0;" data-type="free" data-idx="0"></div>
         <div class="slot" style="left: 135px; top: 0;" data-type="free" data-idx="1"></div>
         <div class="slot" style="left: 260px; top: 0;" data-type="free" data-idx="2"></div>
         <div class="slot" style="left: 385px; top: 0;" data-type="free" data-idx="3"></div>
 
-        <!-- Foundations -->
         <div class="slot" style="left: 545px; top: 0;" data-type="found" data-suit="h"></div>
         <div class="slot" style="left: 670px; top: 0;" data-type="found" data-suit="d"></div>
         <div class="slot" style="left: 795px; top: 0;" data-type="found" data-suit="c"></div>
         <div class="slot" style="left: 920px; top: 0;" data-type="found" data-suit="s"></div>
 
-        <!-- Tableau -->
         <div class="slot" style="left: 10px; top: 180px;" data-type="tab" data-idx="0"></div>
         <div class="slot" style="left: 135px; top: 180px;" data-type="tab" data-idx="1"></div>
         <div class="slot" style="left: 260px; top: 180px;" data-type="tab" data-idx="2"></div>
@@ -196,9 +191,9 @@ const SUITS = {
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
 const FACE_SVGS = {
-    'K': `<svg class="face-svg" viewBox="0 0 512 512"><path fill="currentColor" d="M188.28 59.47c-19.086 0-34.56 15.468-34.56 34.56c0 16.077 10.983 29.57 25.843 33.44l-35.344 81.936c15.877 2.885 27.905 16.784 27.905 33.5c0 18.806-15.23 34.063-34.03 34.063-18.802 0-34.032-15.258-34.032-34.064c0-13.37 7.703-24.924 18.906-30.5l-50.814-79.22c8.007-5.82 13.22-15.24 13.22-25.905c0-17.693-14.314-32.06-32-32.06c-17.688 0-32.032 14.37-32.032 32.06c0 17.693 14.344 32.032 32.03 32.032c.734 0 1.468-.014 2.188-.062l41.907 227h316l41.936-227c.72.048 1.455.063 2.188.063c17.686 0 32.03-14.34 32.03-32.032c0-17.693-14.344-32.06-32.03-32.06c-17.687 0-32.03 14.37-32.03 32.06c-.002 10.723 5.286 20.187 13.373 26l-50.656 79.532c10.778 5.72 18.126 17.04 18.126 30.094c0 18.806-15.23 34.063-34.03 34.063s-34.032-15.258-34.032-34.064c0-17.11 12.602-31.267 29.03-33.687l-34.75-81.532c15.275-3.577 26.657-17.287 26.657-33.657c0-19.094-15.474-34.56-34.56-34.56c-19.09 0-34.564 15.468-34.564 34.56c0 14.798 9.308 27.415 22.375 32.345L268 202.345c14.62 4.52 25.25 18.112 25.25 34.218c0 19.796-16.053 35.843-35.844 35.843c-19.79 0-35.812-16.047-35.812-35.844c0-15.158 9.403-28.102 22.687-33.343l-44.124-76.72c13.234-4.845 22.688-17.552 22.688-32.47c0-19.094-15.475-34.56-34.563-34.56zM97.438 384.936c-23.978 3.763-22.86 39.844 4.188 39.844h6.656l.064.345h294.28l.063-.344h7.625c26.034 0 27.88-35.928 4.313-39.842H97.437z"/></svg>`,
-    'Q': `<svg class="face-svg" viewBox="0 0 512 512"><path fill="currentColor" d="M256 38.55c-30.5 0-55 24.52-55 55c0 30.45 24.5 54.95 55 54.95s55-24.5 55-54.95c0-30.48-24.5-55-55-55M191.3 164.4c-5.7 0-11.1.4-16 1.4c-19.9 4-34.1 15.6-43.1 35.4c-9.4 20.6-12.1 50.6-5.8 88l6 5.9c13.8 13.8 36.1 21.4 58.6 21.4c21.1 0 42.1-6.7 56-19V179.2c-21-9.8-39.8-14.5-55.7-14.8m129.4 0c-15.9.3-34.7 5-55.7 14.8v118.3c13.9 12.3 34.9 19 56 19c22.5 0 44.8-7.6 58.6-21.4l6-5.9c6.3-37.4 3.6-67.4-5.8-88c-9-19.8-23.2-31.4-43.1-35.4c-4.9-1-10.3-1.4-16-1.4m-209.1 14.4h-.2c-30 .7-55.2 12.1-70.2 32.1c-13.3 17.8-19.5 42.9-13.6 76c.9 5.1 2.1 10.5 3.7 16c24.5 18.5 54.3 18.6 78.9.3c-9.2-44.8-6.9-81.9 5.6-109.4q3.6-7.95 8.4-14.7c-2.9-.2-5.8-.3-8.6-.3h-3.9c-.1 0-.1-.1-.1 0m288.8 0c0-.1 0 0-.1 0h-3.9c-2.8 0-5.7.1-8.6.3q4.8 6.75 8.4 14.7c12.5 27.5 14.8 64.6 5.6 109.4c24.5 18.3 54.4 18.2 78.9-.3c1.5-5.5 2.8-10.9 3.7-16c5.9-33.1-.3-58.2-13.6-76c-15-20-40.2-31.4-70.2-32.1zM132.8 318.4c6.9 26.1 17.7 54.9 32.9 86.1h58.6l22.7-56.7v-28c-16.4 10-36.3 14.7-56 14.7c-20.7 0-41.5-5.2-58.2-16.1m246.4 0c-16.7 10.9-37.5 16.1-58.2 16.1c-19.7 0-39.6-4.7-56-14.7v28l22.7 56.7h58.6c15.2-31.2 26-60 32.9-86.1m-264.6 3.4c-23 13.9-50.1 16.1-74.5 6.4c9.6 23 24.1 48.5 44.5 76.3h61c-14-29.6-24.2-57.2-31-82.7m282.8 0c-6.8 25.5-17 53.1-31 82.7h61c20.4-27.8 34.9-53.3 44.5-76.3c-24.3 9.7-51.5 7.5-74.5-6.4M256 373.7l-22.1 55.4l22.1 44.3l22.1-44.3z"/></svg>`,
-    'J': `<svg class="face-svg" viewBox="0 0 512 512"><path fill="currentColor" d="M27.47 15.344c62.946 25.422 108.824 61.313 115.843 132.03v.188c52.31 30.132 92.605 72.538 104.28 119.938a109.7 109.7 0 0 1 3.126 22.03c31.737-3.283 64-20.935 87.843-46.624c26.42-28.467 42.056-65.91 36.843-103.03c-15.205 1.917-30.855.922-46.5-2.314c-50.282-10.398-101.7-42.974-148.562-77.875c-4.79-4.21-9.93-8.084-15.406-11.656c-34.787-22.69-82.864-32.686-137.47-32.686zM234.687 41.25l-15.72 23c19.23 13.107 38.792 25.095 58.126 34.72l13.437-19.25c-12.406-18.774-34.986-32.363-55.842-38.47zm239.375 21.375c-16.886 31.464-37.035 52.625-59.72 64.875a108.5 108.5 0 0 1-20.593 8.53c6.67 44.027-11.746 87.505-41.5 119.564c-27.275 29.387-64.424 49.947-102.53 52.844c-4.482 31.48-23.408 62.858-59.75 90.312c40.743 9.164 78.742 9.05 113.436 1.906l7.72-49.03l2.937-18.595l13.03 13.595L359 379.875c27.795-16.753 64.71-44.308 83.22-67.906L413.31 262l-11.468-19.78l22.03 6.093l47.938 13.25c13.232-23.865 21.327-60.527 21.47-98.875c.13-34.855-6.22-70.88-19.22-100.063zM146.092 170.97L20.564 354.75l.812 110.625l175.53-251.5c-13.78-15.612-31.054-30.19-50.81-42.906z"/></svg>`
+    'K': `<svg class="face-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M188.28 59.47c-19.086 0-34.56 15.468-34.56 34.56c0 16.077 10.983 29.57 25.843 33.44l-35.344 81.936c15.877 2.885 27.905 16.784 27.905 33.5c0 18.806-15.23 34.063-34.03 34.063-18.802 0-34.032-15.258-34.032-34.064c0-13.37 7.703-24.924 18.906-30.5l-50.814-79.22c8.007-5.82 13.22-15.24 13.22-25.905c0-17.693-14.314-32.06-32-32.06c-17.688 0-32.032 14.37-32.032 32.06c0 17.693 14.344 32.032 32.03 32.032c.734 0 1.468-.014 2.188-.062l41.907 227h316l41.936-227c.72.048 1.455.063 2.188.063c17.686 0 32.03-14.34 32.03-32.032c0-17.693-14.344-32.06-32.03-32.06c-17.687 0-32.03 14.37-32.03 32.06c-.002 10.723 5.286 20.187 13.373 26l-50.656 79.532c10.778 5.72 18.126 17.04 18.126 30.094c0 18.806-15.23 34.063-34.03 34.063s-34.032-15.258-34.032-34.064c0-17.11 12.602-31.267 29.03-33.687l-34.75-81.532c15.275-3.577 26.657-17.287 26.657-33.657c0-19.094-15.474-34.56-34.56-34.56c-19.09 0-34.564 15.468-34.564 34.56c0 14.798 9.308 27.415 22.375 32.345L268 202.345c14.62 4.52 25.25 18.112 25.25 34.218c0 19.796-16.053 35.843-35.844 35.843c-19.79 0-35.812-16.047-35.812-35.844c0-15.158 9.403-28.102 22.687-33.343l-44.124-76.72c13.234-4.845 22.688-17.552 22.688-32.47c0-19.094-15.475-34.56-34.563-34.56zM97.438 384.936c-23.978 3.763-22.86 39.844 4.188 39.844h6.656l.064.345h294.28l.063-.344h7.625c26.034 0 27.88-35.928 4.313-39.842H97.437z"/></svg>`,
+    'Q': `<svg class="face-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M256 38.55c-30.5 0-55 24.52-55 55c0 30.45 24.5 54.95 55 54.95s55-24.5 55-54.95c0-30.48-24.5-55-55-55M191.3 164.4c-5.7 0-11.1.4-16 1.4c-19.9 4-34.1 15.6-43.1 35.4c-9.4 20.6-12.1 50.6-5.8 88l6 5.9c13.8 13.8 36.1 21.4 58.6 21.4c21.1 0 42.1-6.7 56-19V179.2c-21-9.8-39.8-14.5-55.7-14.8m129.4 0c-15.9.3-34.7 5-55.7 14.8v118.3c13.9 12.3 34.9 19 56 19c22.5 0 44.8-7.6 58.6-21.4l6-5.9c6.3-37.4 3.6-67.4-5.8-88c-9-19.8-23.2-31.4-43.1-35.4c-4.9-1-10.3-1.4-16-1.4m-209.1 14.4h-.2c-30 .7-55.2 12.1-70.2 32.1c-13.3 17.8-19.5 42.9-13.6 76c.9 5.1 2.1 10.5 3.7 16c24.5 18.5 54.3 18.6 78.9.3c-9.2-44.8-6.9-81.9 5.6-109.4q3.6-7.95 8.4-14.7c-2.9-.2-5.8-.3-8.6-.3h-3.9c-.1 0-.1-.1-.1 0m288.8 0c0-.1 0 0-.1 0h-3.9c-2.8 0-5.7.1-8.6.3q4.8 6.75 8.4 14.7c12.5 27.5 14.8 64.6 5.6 109.4c24.5 18.3 54.4 18.2 78.9-.3c1.5-5.5 2.8-10.9 3.7-16c5.9-33.1-.3-58.2-13.6-76c-15-20-40.2-31.4-70.2-32.1zM132.8 318.4c6.9 26.1 17.7 54.9 32.9 86.1h58.6l22.7-56.7v-28c-16.4 10-36.3 14.7-56 14.7c-20.7 0-41.5-5.2-58.2-16.1m246.4 0c-16.7 10.9-37.5 16.1-58.2 16.1c-19.7 0-39.6-4.7-56-14.7v28l22.7 56.7h58.6c15.2-31.2 26-60 32.9-86.1m-264.6 3.4c-23 13.9-50.1 16.1-74.5 6.4c9.6 23 24.1 48.5 44.5 76.3h61c-14-29.6-24.2-57.2-31-82.7m282.8 0c-6.8 25.5-17 53.1-31 82.7h61c20.4-27.8 34.9-53.3 44.5-76.3c-24.3 9.7-51.5 7.5-74.5-6.4M256 373.7l-22.1 55.4l22.1 44.3l22.1-44.3z"/></svg>`,
+    'J': `<svg class="face-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M27.47 15.344c62.946 25.422 108.824 61.313 115.843 132.03v.188c52.31 30.132 92.605 72.538 104.28 119.938a109.7 109.7 0 0 1 3.126 22.03c31.737-3.283 64-20.935 87.843-46.624c26.42-28.467 42.056-65.91 36.843-103.03c-15.205 1.917-30.855.922-46.5-2.314c-50.282-10.398-101.7-42.974-148.562-77.875c-4.79-4.21-9.93-8.084-15.406-11.656c-34.787-22.69-82.864-32.686-137.47-32.686zM234.687 41.25l-15.72 23c19.23 13.107 38.792 25.095 58.126 34.72l13.437-19.25c-12.406-18.774-34.986-32.363-55.842-38.47zm239.375 21.375c-16.886 31.464-37.035 52.625-59.72 64.875a108.5 108.5 0 0 1-20.593 8.53c6.67 44.027-11.746 87.505-41.5 119.564c-27.275 29.387-64.424 49.947-102.53 52.844c-4.482 31.48-23.408 62.858-59.75 90.312c40.743 9.164 78.742 9.05 113.436 1.906l7.72-49.03l2.937-18.595l13.03 13.595L359 379.875c27.795-16.753 64.71-44.308 83.22-67.906L413.31 262l-11.468-19.78l22.03 6.093l47.938 13.25c13.232-23.865 21.327-60.527 21.47-98.875c.13-34.855-6.22-70.88-19.22-100.063zM146.092 170.97L20.564 354.75l.812 110.625l175.53-251.5c-13.78-15.612-31.054-30.19-50.81-42.906z"/></svg>`
 };
 
 class FreeCell {
@@ -206,6 +201,7 @@ class FreeCell {
         this.selected = null;
         this.history = [];
         this.cards = [];
+        this.lastMovedCardId = null; // Tracks the very last card moved
         this.state = { free: Array(4).fill(null), found: {h:[],d:[],c:[],s:[]}, tab: Array(8).fill().map(()=>[]) };
         this.createDeck();
         this.init();
@@ -213,11 +209,9 @@ class FreeCell {
         window.addEventListener('resize', () => this.resize());
     }
 
-    // Auto-scaling engine for mobile portrait
     resize() {
         const scaler = document.getElementById('scaler');
-        const board = document.getElementById('board');
-        const scale = window.innerWidth / 1060; // Slightly more than board width for padding
+        const scale = window.innerWidth / 1060;
         scaler.style.transform = `scale(${scale})`;
         scaler.style.left = `${(window.innerWidth - 1040 * scale) / 2}px`;
     }
@@ -241,7 +235,7 @@ class FreeCell {
 
     init() {
         this.state = { free: Array(4).fill(null), found: {h:[],d:[],c:[],s:[]}, tab: Array(8).fill().map(()=>[]) };
-        this.history = []; this.selected = null;
+        this.history = []; this.selected = null; this.lastMovedCardId = null;
         let deck = [...this.cards];
         deck.sort(() => Math.random() - 0.5);
         deck.forEach((c, i) => this.state.tab[i % 8].push(c));
@@ -265,17 +259,27 @@ class FreeCell {
     updatePos(card, type, gIdx, cIdx) {
         const slot = document.querySelector(`[data-type="${type}"]${type==='found' ? `[data-suit="${gIdx}"]` : `[data-idx="${gIdx}"]`}`);
         const x = slot.offsetLeft;
-        const y = slot.offsetTop + (type === 'tab' ? cIdx * 35 : 0);
+        const y = slot.offsetTop + (type === 'tab' ? cIdx * 50 : 0); // 50px offset ensures header visibility
         card.el.style.transform = `translate(${x}px, ${y}px)`;
         card.el.style.zIndex = cIdx + 100;
     }
 
     handleInteraction(card) {
         const loc = this.getLoc(card);
+
+        // If card just moved to a FreeCell, touching it triggers Undo
+        if (loc.type === 'free' && this.lastMovedCardId === card.id) {
+            this.undo();
+            return;
+        }
+
         if (loc.type === 'tab' && this.state.tab[loc.idx].slice(-1)[0] !== card) return;
 
         if (this.selected) {
-            if (this.isValid(this.selected, loc.type, loc.idx)) { this.move(this.selected, loc.type, loc.idx); return; }
+            if (this.isValid(this.selected, loc.type, loc.idx)) { 
+                this.move(this.selected, loc.type, loc.idx); 
+                return; 
+            }
             this.selected = null;
         }
 
@@ -292,15 +296,9 @@ class FreeCell {
 
     findSmartDestination(card) {
         if (this.isValid(card, 'found', card.suit)) return { type: 'found', idx: card.suit };
-        for (let i = 0; i < 8; i++) {
-            if (this.isValid(card, 'tab', i) && this.state.tab[i].length > 0) return { type: 'tab', idx: i };
-        }
-        for (let i = 0; i < 8; i++) {
-            if (this.isValid(card, 'tab', i)) return { type: 'tab', idx: i };
-        }
-        for (let i = 0; i < 4; i++) {
-            if (this.isValid(card, 'free', i)) return { type: 'free', idx: i };
-        }
+        for (let i = 0; i < 8; i++) if (this.isValid(card, 'tab', i) && this.state.tab[i].length > 0) return { type: 'tab', idx: i };
+        for (let i = 0; i < 8; i++) if (this.isValid(card, 'tab', i)) return { type: 'tab', idx: i };
+        for (let i = 0; i < 4; i++) if (this.isValid(card, 'free', i)) return { type: 'free', idx: i };
         return null;
     }
 
@@ -321,6 +319,7 @@ class FreeCell {
 
     move(c, dType, dIdx) {
         this.history.push(JSON.parse(JSON.stringify(this.state, (k,v) => k==='el'?undefined:v)));
+        this.lastMovedCardId = c.id; // Record which card was just moved
         const src = this.getLoc(c);
         if (src.type === 'tab') this.state.tab[src.idx].pop();
         else if (src.type === 'free') this.state.free[src.idx] = null;
@@ -349,7 +348,7 @@ class FreeCell {
         this.state.free = p.free.map(c => c ? this.cards.find(oc => oc.id === c.id) : null);
         Object.keys(this.state.found).forEach(s => this.state.found[s] = p.found[s].map(c => this.cards.find(oc => oc.id === c.id)));
         this.state.tab = p.tab.map(col => col.map(c => this.cards.find(oc => oc.id === c.id)));
-        this.selected = null; this.render();
+        this.selected = null; this.lastMovedCardId = null; this.render();
     }
 }
 
