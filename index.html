@@ -17,6 +17,7 @@
         
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg); font-family: 'Segoe UI', Arial, sans-serif; overflow-x: hidden; overflow-y: auto; touch-action: manipulation; }
         
+        /* Centered Button Strip */
         .controls { width: 100%; height: 65px; background: var(--header); display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.4); z-index: 5000; position: sticky; top: 0; }
         
         button { padding: 10px 10px; font-size: 0.85rem; font-weight: bold; cursor: pointer; border-radius: 8px; border: none; box-shadow: 0 3px #444; background: #fff; color: #333; min-width: 55px; }
@@ -25,13 +26,15 @@
         .btn-redo { background: #2196F3; color: white; }
         .btn-hint { background: #00bcd4; color: white; }
         
-        #scaler { transform-origin: top center; position: relative; margin-top: 10px; width: 100%; display: flex; justify-content: center; }
-        #board { width: var(--board-width); height: 3200px; position: relative; } 
+        /* New Scaling Logic: Anchored to Top Center for alignment with buttons */
+        #scaler-wrapper { width: 100%; display: flex; justify-content: center; position: relative; }
+        #scaler { transform-origin: top center; position: relative; margin-top: 10px; }
+        #board { width: var(--board-width); height: 3200px; position: relative; visibility: hidden; } 
         
         .slot { width: var(--card-w); height: var(--card-h); border: 4px dashed var(--slot-border); border-radius: 12px; position: absolute; box-sizing: border-box; z-index: 1; }
         .slot.hint { box-shadow: 0 0 30px var(--hint); border: 5px solid var(--hint); background: rgba(0, 255, 136, 0.2); }
         
-        .card { width: var(--card-w); height: var(--card-h); background: var(--card); border-radius: 10px; position: absolute; box-shadow: 0 6px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding: 8px 10px; box-sizing: border-box; cursor: pointer; transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1); z-index: 100; pointer-events: auto; }
+        .card { width: var(--card-w); height: var(--card-h); background: var(--card); border-radius: 10px; position: absolute; box-shadow: 0 6px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding: 8px 10px; box-sizing: border-box; cursor: pointer; transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1); z-index: 100; left:0; top:0; }
         .card.red { color: var(--card-red); } .card.black { color: var(--card-black); }
         .card.selected { outline: 10px solid var(--highlight); box-shadow: 0 0 50px var(--highlight); z-index: 4000 !important; }
         
@@ -61,25 +64,26 @@
     <button onclick="toggleTheme()" id="theme-btn">☀️</button>
 </div>
 
-<div id="scaler">
-    <div id="board">
-        <!-- Persistent Slots -->
-        <div class="slot" style="left: 10px; top: 0;" data-type="free" data-idx="0"></div>
-        <div class="slot" style="left: 135px; top: 0;" data-type="free" data-idx="1"></div>
-        <div class="slot" style="left: 260px; top: 0;" data-type="free" data-idx="2"></div>
-        <div class="slot" style="left: 385px; top: 0;" data-type="free" data-idx="3"></div>
-        <div class="slot" style="left: 510px; top: 0;" data-type="found" data-suit="h"></div>
-        <div class="slot" style="left: 635px; top: 0;" data-type="found" data-suit="d"></div>
-        <div class="slot" style="left: 760px; top: 0;" data-type="found" data-suit="c"></div>
-        <div class="slot" style="left: 885px; top: 0;" data-type="found" data-suit="s"></div>
-        <div class="slot" style="left: 10px; top: 180px;" data-type="tab" data-idx="0"></div>
-        <div class="slot" style="left: 135px; top: 180px;" data-type="tab" data-idx="1"></div>
-        <div class="slot" style="left: 260px; top: 180px;" data-type="tab" data-idx="2"></div>
-        <div class="slot" style="left: 385px; top: 180px;" data-type="tab" data-idx="3"></div>
-        <div class="slot" style="left: 510px; top: 180px;" data-type="tab" data-idx="4"></div>
-        <div class="slot" style="left: 635px; top: 180px;" data-type="tab" data-idx="5"></div>
-        <div class="slot" style="left: 760px; top: 180px;" data-type="tab" data-idx="6"></div>
-        <div class="slot" style="left: 885px; top: 180px;" data-type="tab" data-idx="7"></div>
+<div id="scaler-wrapper">
+    <div id="scaler">
+        <div id="board">
+            <div class="slot" style="left: 10px; top: 0;" data-type="free" data-idx="0"></div>
+            <div class="slot" style="left: 135px; top: 0;" data-type="free" data-idx="1"></div>
+            <div class="slot" style="left: 260px; top: 0;" data-type="free" data-idx="2"></div>
+            <div class="slot" style="left: 385px; top: 0;" data-type="free" data-idx="3"></div>
+            <div class="slot" style="left: 510px; top: 0;" data-type="found" data-suit="h"></div>
+            <div class="slot" style="left: 635px; top: 0;" data-type="found" data-suit="d"></div>
+            <div class="slot" style="left: 760px; top: 0;" data-type="found" data-suit="c"></div>
+            <div class="slot" style="left: 885px; top: 0;" data-type="found" data-suit="s"></div>
+            <div class="slot" style="left: 10px; top: 180px;" data-type="tab" data-idx="0"></div>
+            <div class="slot" style="left: 135px; top: 180px;" data-type="tab" data-idx="1"></div>
+            <div class="slot" style="left: 260px; top: 180px;" data-type="tab" data-idx="2"></div>
+            <div class="slot" style="left: 385px; top: 180px;" data-type="tab" data-idx="3"></div>
+            <div class="slot" style="left: 510px; top: 180px;" data-type="tab" data-idx="4"></div>
+            <div class="slot" style="left: 635px; top: 180px;" data-type="tab" data-idx="5"></div>
+            <div class="slot" style="left: 760px; top: 180px;" data-type="tab" data-idx="6"></div>
+            <div class="slot" style="left: 885px; top: 180px;" data-type="tab" data-idx="7"></div>
+        </div>
     </div>
 </div>
 
@@ -101,11 +105,12 @@ class FreeCellGame {
         this.state = { free: Array(4).fill(null), found: {h:[],d:[],c:[],s:[]}, tab: Array(8).fill().map(()=>[]) };
         this.createDeck();
         window.addEventListener('resize', () => this.resize());
+        setTimeout(() => this.init(), 150);
     }
 
     resize() {
         const s = document.getElementById('scaler');
-        const scale = window.innerWidth / 1060;
+        const scale = Math.min(1, window.innerWidth / 1060);
         s.style.transform = `scale(${scale})`;
     }
 
@@ -131,6 +136,7 @@ class FreeCellGame {
         let deck = [...this.cards]; deck.sort(() => Math.random() - 0.5);
         deck.forEach((c, i) => this.state.tab[i % 8].push(c));
         document.getElementById('win-msg').style.display = 'none';
+        document.getElementById('board').style.visibility = 'visible';
         this.resize();
         this.render();
     }
