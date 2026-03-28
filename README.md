@@ -13,4 +13,4 @@
 - elderly friendly fluid gameplay. 
 - autoscales to screen size.
 - adopts day / night mode of the browser or adjust with the icon.
-- load it before being out of pocket.
+- load it before being out of pocket https://bencirrus.github.io/FreeCell/
