@@ -301,7 +301,7 @@ class FreeCellGame {
         if (loc.type === 'tab') this.state.tab[loc.idx].pop(); else if (loc.type === 'free') this.state.free[loc.idx] = null;
         if (dType === 'tab') this.state.tab[dIdx].push(c); else if (dType === 'free') this.state.free[dIdx] = c; else if (dType === 'found') this.state.found[dIdx].push(c);
         this.lastMovedId = c.id; this.selected = null; this.hintId = null; this.render();
-        if (!sweep) setTimeout(() => this.autoSweep(), 500);
+        if (!sweep && !this.isHinting) setTimeout(() => this.autoSweep(), 500);
     }
 
     autoSweep() {
@@ -345,7 +345,9 @@ class FreeCellGame {
         }
         if (m) {
             if (this.hintId === m.c.id) {
+                this.isHinting = true;
                 this.executeMove(m.c, m.t, m.idx);
+                this.isHinting = false;
             } else {
                 m.c.el.classList.add('wink');
                 this.hintId = m.c.id;
