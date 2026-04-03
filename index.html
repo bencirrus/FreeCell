@@ -161,13 +161,18 @@ class FreeCellGame {
         }
 
         // Force remaining foundation/freecell cards into tableau (preserving golden path)
+        // Target standard FreeCell distribution: 4 columns of 7, 4 columns of 6
+        const dist = [7, 7, 7, 7, 6, 6, 6, 6];
         let remaining = true;
         while (remaining) {
             remaining = false;
             for (let i = 0; i < 4; i++) {
                 if (this.state.free[i]) {
-                    const shortest = this.state.tab.reduce((best, col, idx) => col.length < best.len ? {len: col.length, idx} : best, {len: 999, idx: 0});
-                    this.state.tab[shortest.idx].push(this.state.free[i]);
+                    const bestCol = this.state.tab.reduce((best, col, idx) => {
+                        const need = dist[idx] - col.length;
+                        return need > best.need ? { need, idx } : best;
+                    }, { need: -999, idx: 0 });
+                    this.state.tab[bestCol.idx].push(this.state.free[i]);
                     this.state.free[i] = null;
                     this.goldenPath.push(this.serialize());
                     remaining = true;
@@ -176,8 +181,11 @@ class FreeCellGame {
             for (const s of Object.keys(this.state.found)) {
                 if (this.state.found[s].length) {
                     const card = this.state.found[s].pop();
-                    const shortest = this.state.tab.reduce((best, col, idx) => col.length < best.len ? {len: col.length, idx} : best, {len: 999, idx: 0});
-                    this.state.tab[shortest.idx].push(card);
+                    const bestCol = this.state.tab.reduce((best, col, idx) => {
+                        const need = dist[idx] - col.length;
+                        return need > best.need ? { need, idx } : best;
+                    }, { need: -999, idx: 0 });
+                    this.state.tab[bestCol.idx].push(card);
                     this.goldenPath.push(this.serialize());
                     remaining = true;
                 }
@@ -191,19 +199,21 @@ class FreeCellGame {
     }
 
     getReverseMoves() {
+        const dist = [7, 7, 7, 7, 6, 6, 6, 6];
         const moves = [];
         Object.keys(this.state.found).forEach(s => {
             const stack = this.state.found[s]; if (!stack.length) return;
             const card = stack[stack.length-1];
             for (let i = 0; i < 8; i++) {
-                const col = this.state.tab[i];
-                if (col.length < 12) moves.push({card, from:'found', fIdx: s, to:'tab', tIdx: i});
+                if (this.state.tab[i].length < dist[i]) moves.push({card, from:'found', fIdx: s, to:'tab', tIdx: i});
             }
             for (let i = 0; i < 4; i++) if (this.state.free[i] === null) moves.push({card, from:'found', fIdx: s, to:'free', tIdx: i});
         });
         for (let i = 0; i < 4; i++) {
             const card = this.state.free[i]; if (!card) continue;
-            for (let j = 0; j < 8; j++) moves.push({card, from:'free', fIdx: i, to:'tab', tIdx: j});
+            for (let j = 0; j < 8; j++) {
+                if (this.state.tab[j].length < dist[j]) moves.push({card, from:'free', fIdx: i, to:'tab', tIdx: j});
+            }
         }
         return moves;
     }
