@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Senior Solitaire Ultra</title>
+    <title>Senior Solitaire Ultra - G.Old.v008</title>
     <style>
         :root {
             --bg: #3db371; --header: #1e6336; --card: #fdf5e6;
@@ -17,24 +17,22 @@
         
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg); font-family: 'Segoe UI', Arial, sans-serif; overflow-x: hidden; overflow-y: auto; touch-action: manipulation; }
         
-        /* Centered Button Strip */
-        .controls { width: 100%; height: 65px; background: var(--header); display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.4); z-index: 5000; position: sticky; top: 0; }
+        .controls { width: 100%; height: 65px; background: var(--header); display: flex; justify-content: center; align-items: center; gap: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.4); z-index: 5000; position: sticky; top: 0; }
         
-        button { padding: 10px 10px; font-size: 0.85rem; font-weight: bold; cursor: pointer; border-radius: 8px; border: none; box-shadow: 0 3px #444; background: #fff; color: #333; min-width: 55px; }
+        button { padding: 10px 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; border-radius: 8px; border: none; box-shadow: 0 3px #444; background: #fff; color: #333; min-width: 52px; transition: background 0.3s; }
         button:active { transform: translateY(2px); box-shadow: 0 1px #222; }
         .btn-undo { background: #f39c12; color: white; }
         .btn-redo { background: #2196F3; color: white; }
         .btn-hint { background: #00bcd4; color: white; }
+        .btn-help { background: #ff1744; color: white; }
         
-        /* New Scaling Logic: Anchored to Top Center for alignment with buttons */
-        #scaler-wrapper { width: 100%; display: flex; justify-content: center; position: relative; }
+        #scaler-wrapper { width: 100%; display: flex; justify-content: center; position: relative; min-height: 100vh; }
         #scaler { transform-origin: top center; position: relative; margin-top: 10px; }
-        #board { width: var(--board-width); height: 3200px; position: relative; visibility: hidden; } 
+        #board { width: var(--board-width); height: 5000px; position: relative; visibility: hidden; } 
         
         .slot { width: var(--card-w); height: var(--card-h); border: 4px dashed var(--slot-border); border-radius: 12px; position: absolute; box-sizing: border-box; z-index: 1; }
-        .slot.hint { box-shadow: 0 0 30px var(--hint); border: 5px solid var(--hint); background: rgba(0, 255, 136, 0.2); }
         
-        .card { width: var(--card-w); height: var(--card-h); background: var(--card); border-radius: 10px; position: absolute; box-shadow: 0 6px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding: 8px 10px; box-sizing: border-box; cursor: pointer; transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1); z-index: 100; left:0; top:0; }
+        .card { width: var(--card-w); height: var(--card-h); background: var(--card); border-radius: 10px; position: absolute; box-shadow: 0 6px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding: 8px 10px; box-sizing: border-box; cursor: pointer; transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1), opacity 0.3s; z-index: 100; opacity: 0; }
         .card.red { color: var(--card-red); } .card.black { color: var(--card-black); }
         .card.selected { outline: 10px solid var(--highlight); box-shadow: 0 0 50px var(--highlight); z-index: 4000 !important; }
         
@@ -57,10 +55,11 @@
 <body data-theme="light">
 
 <div class="controls">
-    <button onclick="game.init()">New</button>
+    <button onclick="game.boot()">New</button>
     <button class="btn-undo" onclick="game.undo()">Undo</button>
     <button class="btn-redo" onclick="game.redo()">Redo</button>
-    <button class="btn-hint" onclick="game.giveHint()">Hint</button>
+    <button class="btn-hint" id="hint-btn" onclick="game.giveHint()">Hint</button>
+    <button class="btn-help" id="help-btn" onclick="game.performHelp()">Help</button>
     <button onclick="toggleTheme()" id="theme-btn">☀️</button>
 </div>
 
@@ -90,6 +89,9 @@
 <div id="win-msg"><h1>Victory!</h1><button onclick="location.reload()">Play Again</button></div>
 
 <script>
+/** 
+ * Senior Solitaire Engine G.Old.v008
+ */
 const SUITS = { h: { label: '♥', color: 'red' }, d: { label: '♦', color: 'red' }, c: { label: '♣', color: 'black' }, s: { label: '♠', color: 'black' } };
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
@@ -101,17 +103,17 @@ const FACE_SVGS = {
 
 class FreeCellGame {
     constructor() {
-        this.cards = []; this.selected = null; this.history = []; this.redoStack = []; this.lastMovedId = null;
+        this.cards = []; this.selected = null; this.history = []; this.redoStack = []; 
+        this.goldenPath = []; this.lastMovedId = null; this.hintId = null; this.isAnimating = false;
         this.state = { free: Array(4).fill(null), found: {h:[],d:[],c:[],s:[]}, tab: Array(8).fill().map(()=>[]) };
         this.createDeck();
         window.addEventListener('resize', () => this.resize());
-        setTimeout(() => this.init(), 150);
+        window.onload = () => this.boot();
     }
 
     resize() {
         const s = document.getElementById('scaler');
-        const scale = Math.min(1, window.innerWidth / 1060);
-        s.style.transform = `scale(${scale})`;
+        if (s) s.style.transform = `scale(${Math.min(1, window.innerWidth / 1060)})`;
     }
 
     createDeck() {
@@ -124,42 +126,114 @@ class FreeCellGame {
                 const face = FACE_SVGS[v] || `<div class="suit-large">${SUITS[s].label}</div>`;
                 div.innerHTML = `<div class="card-header"><div class="card-rank">${v}</div><div class="card-suit-small">${SUITS[s].label}</div></div><div class="card-center">${face}</div>`;
                 div.onclick = (e) => { e.stopPropagation(); this.handleInteraction(cObj); };
-                board.appendChild(div);
-                cObj.el = div; this.cards.push(cObj);
+                board.appendChild(div); cObj.el = div; this.cards.push(cObj);
             });
         });
     }
 
-    init() {
+    boot() {
+        this.resize();
+        requestAnimationFrame(() => requestAnimationFrame(() => this.startNewGame()));
+    }
+
+    startNewGame() {
         this.state = { free: Array(4).fill(null), found: {h:[],d:[],c:[],s:[]}, tab: Array(8).fill().map(()=>[]) };
-        this.history = []; this.redoStack = []; this.selected = null; this.lastMovedId = null;
-        let deck = [...this.cards]; deck.sort(() => Math.random() - 0.5);
-        deck.forEach((c, i) => this.state.tab[i % 8].push(c));
+        this.history = []; this.redoStack = []; this.goldenPath = []; this.selected = null;
+
+        // Start solved
+        Object.keys(this.state.found).forEach(s => this.state.found[s] = this.cards.filter(c => c.suit === s).sort((a,b) => a.rank - b.rank));
+        this.goldenPath.push(this.serialize());
+
+        // Backward Scramble: 400 iterations using FreeCells to bury cards
+        for (let i = 0; i < 400; i++) {
+            const moves = this.getReverseMoves();
+            if (!moves.length) break;
+            const m = moves[Math.floor(Math.random() * moves.length)];
+            
+            if (m.from === 'found') this.state.found[m.fIdx].pop();
+            else if (m.from === 'free') this.state.free[m.fIdx] = null;
+            else this.state.tab[m.fIdx].pop();
+
+            if (m.to === 'tab') this.state.tab[m.tIdx].push(m.card);
+            else this.state.free[m.tIdx] = m.card;
+
+            this.goldenPath.push(this.serialize());
+        }
+
+        // Force remaining foundation/freecell cards into tableau (preserving golden path)
+        let remaining = true;
+        while (remaining) {
+            remaining = false;
+            for (let i = 0; i < 4; i++) {
+                if (this.state.free[i]) {
+                    const shortest = this.state.tab.reduce((best, col, idx) => col.length < best.len ? {len: col.length, idx} : best, {len: 999, idx: 0});
+                    this.state.tab[shortest.idx].push(this.state.free[i]);
+                    this.state.free[i] = null;
+                    this.goldenPath.push(this.serialize());
+                    remaining = true;
+                }
+            }
+            for (const s of Object.keys(this.state.found)) {
+                if (this.state.found[s].length) {
+                    const card = this.state.found[s].pop();
+                    const shortest = this.state.tab.reduce((best, col, idx) => col.length < best.len ? {len: col.length, idx} : best, {len: 999, idx: 0});
+                    this.state.tab[shortest.idx].push(card);
+                    this.goldenPath.push(this.serialize());
+                    remaining = true;
+                }
+            }
+        }
+
+        this.cards.forEach(c => c.el.style.opacity = "1");
         document.getElementById('win-msg').style.display = 'none';
         document.getElementById('board').style.visibility = 'visible';
-        this.resize();
         this.render();
     }
 
-    render() {
-        document.querySelectorAll('.slot').forEach(s => {
-            s.classList.remove('hint');
-            s.onclick = () => this.handleSlotClick(s.dataset.type, s.dataset.idx || s.dataset.suit);
+    getReverseMoves() {
+        const moves = [];
+        Object.keys(this.state.found).forEach(s => {
+            const stack = this.state.found[s]; if (!stack.length) return;
+            const card = stack[stack.length-1];
+            for (let i = 0; i < 8; i++) {
+                const col = this.state.tab[i];
+                if (col.length < 12) moves.push({card, from:'found', fIdx: s, to:'tab', tIdx: i});
+            }
+            for (let i = 0; i < 4; i++) if (this.state.free[i] === null) moves.push({card, from:'found', fIdx: s, to:'free', tIdx: i});
         });
+        for (let i = 0; i < 4; i++) {
+            const card = this.state.free[i]; if (!card) continue;
+            for (let j = 0; j < 8; j++) moves.push({card, from:'free', fIdx: i, to:'tab', tIdx: j});
+        }
+        return moves;
+    }
+
+    serialize() {
+        const canonicalFound = Object.keys(this.state.found).sort().map(s => this.state.found[s].map(c => c.id).join(','));
+        return JSON.stringify({
+            f: this.state.free.map(c => c ? c.id : null),
+            v: canonicalFound,
+            t: this.state.tab.map(s => s.map(c => c.id))
+        });
+    }
+
+    render() {
+        document.querySelectorAll('.slot').forEach(s => s.onclick = () => this.handleSlotClick(s.dataset.type, s.dataset.idx || s.dataset.suit));
         this.state.tab.forEach((col, i) => col.forEach((c, ci) => this.updatePos(c, 'tab', i, ci)));
         this.state.free.forEach((c, i) => { if(c) this.updatePos(c, 'free', i, 0); });
         Object.keys(this.state.found).forEach(s => this.state.found[s].forEach(c => this.updatePos(c, 'found', s, 0)));
         this.cards.forEach(c => { 
-            c.el.classList.remove('selected', 'is-target', 'wink');
-            if (this.isNextNeeded(c)) c.el.classList.add('is-target');
+            c.el.classList.remove('selected', 'wink');
+            if (this.isNextNeeded(c)) c.el.classList.add('is-target'); else c.el.classList.remove('is-target');
         });
-        if (this.selected) { this.selected.el.classList.add('selected'); this.showHints(); }
+        if (this.selected) this.selected.el.classList.add('selected');
+        const onPath = this.goldenPath.includes(this.serialize());
+        document.getElementById('help-btn').style.background = (onPath || !this.history.length) ? "#999" : "#ff1744";
         if (Object.values(this.state.found).flat().length === 52) document.getElementById('win-msg').style.display = 'block';
     }
 
     updatePos(card, type, gIdx, cIdx) {
-        const sel = `[data-type="${type}"]${type==='found' ? `[data-suit="${gIdx}"]` : `[data-idx="${gIdx}"]`}`;
-        const slot = document.querySelector(sel);
+        const slot = document.querySelector(`[data-type="${type}"]${type==='found' ? `[data-suit="${gIdx}"]` : `[data-idx="${gIdx}"]`}`);
         if(!slot) return;
         const x = slot.offsetLeft, y = slot.offsetTop + (type === 'tab' ? cIdx * 75 : 0);
         card.el.style.setProperty('--tx', `${x}px`); card.el.style.setProperty('--ty', `${y}px`);
@@ -168,68 +242,113 @@ class FreeCellGame {
 
     handleInteraction(c) {
         const loc = this.getLoc(c);
-        if (loc.type === 'free' && this.lastMovedId === c.id) { this.undo(); return; }
-        const seq = this.getSeq(c, loc); if (!seq) return;
+        // RULE: Top card only
+        if (loc.type === 'tab' && this.state.tab[loc.idx][this.state.tab[loc.idx].length - 1] !== c) return;
+        
+        // Round Robin Reselection Cycle
+        if (c.id === this.lastMovedId) {
+            const moves = this.getLegalMoves(c).filter(m => !(m.type === loc.type && m.idx === loc.idx));
+            if (moves.length > 0) { this.executeMove(c, moves[0].type, moves[0].idx); return; }
+        }
+
         if (this.selected) {
-            if (this.isValid(this.selected, loc.type, loc.idx)) { this.move(this.selected, loc.type, loc.idx); return; }
+            if (this.isValid(this.selected, loc.type, loc.idx)) { this.executeMove(this.selected, loc.type, loc.idx); return; }
             this.selected = null;
         }
-        const best = this.findBest(c);
-        if (best) this.move(c, best.type, best.idx); else { this.selected = c; this.render(); }
+        const best = this.getLegalMoves(c)[0];
+        if (best) this.executeMove(c, best.type, best.idx); else { this.selected = c; this.render(); }
     }
 
-    getSeq(c, loc) {
-        if (loc.type !== 'tab') return [c];
-        const col = this.state.tab[loc.idx], idx = col.indexOf(c), s = col.slice(idx);
-        for (let i = 0; i < s.length - 1; i++) if (s[i].color === s[i+1].color || s[i].rank !== s[i+1].rank + 1) return null;
-        return s;
-    }
-
-    handleSlotClick(t, idx) { if (this.selected && this.isValid(this.selected, t, idx)) this.move(this.selected, t, idx); else { this.selected = null; this.render(); } }
-
-    findBest(c) {
-        if (this.isValid(c, 'found', c.suit)) return { type: 'found', idx: c.suit };
-        let tDest = null, eDest = null;
-        for (let i = 0; i < 8; i++) if (this.isValid(c, 'tab', i)) { if (this.state.tab[i].length > 0) { tDest = { type: 'tab', idx: i }; break; } else if (eDest === null) eDest = { type: 'tab', idx: i }; }
-        if (tDest) return tDest; if (eDest) return eDest;
-        for (let i = 0; i < 4; i++) if (this.isValid(c, 'free', i)) return { type: 'free', idx: i };
-        return null;
-    }
-
-    isNextNeeded(c) { const s = this.state.found[c.suit]; return c.rank === (s.length === 0 ? 1 : s[s.length-1].rank + 1); }
-
-    autoSweep() {
-        let changed = false;
-        const srcs = [...this.state.tab.map((col, i) => col.length ? {c: col[col.length-1], t:'tab', idx:i} : null), ...this.state.free.map((c, i) => c ? {c, t:'free', idx:i} : null)].filter(x => x);
-        for (let s of srcs) if (this.isValid(s.c, 'found', s.c.suit)) { this.move(s.c, 'found', s.c.suit, true); changed = true; break; }
-        if (changed) setTimeout(() => this.autoSweep(), 450);
+    getLegalMoves(c) {
+        const moves = [];
+        if (this.isValid(c, 'found', c.suit)) moves.push({type:'found', idx: c.suit});
+        for (let i = 0; i < 8; i++) if (this.state.tab[i].length > 0 && this.isValid(c, 'tab', i)) moves.push({type:'tab', idx: i});
+        for (let i = 0; i < 8; i++) if (this.state.tab[i].length === 0 && this.isValid(c, 'tab', i)) moves.push({type:'tab', idx: i});
+        for (let i = 0; i < 4; i++) if (this.isValid(c, 'free', i)) moves.push({type:'free', idx: i});
+        return moves;
     }
 
     isValid(c, dType, dIdx) {
-        const loc = this.getLoc(c), seq = this.getSeq(c, loc); if (!seq) return false;
-        const ef = this.state.free.filter(f => f === null).length, et = this.state.tab.filter(t => t.length === 0).length;
-        const max = (ef + 1) * Math.pow(2, (dType === 'tab' && this.state.tab[dIdx].length === 0) ? Math.max(0, et - 1) : et);
-        if (seq.length > max) return false;
-        if (dType === 'free') return seq.length === 1 && this.state.free[dIdx] === null;
-        if (dType === 'found') return seq.length === 1 && c.suit === dIdx && (this.state.found[dIdx].length === 0 ? c.rank === 1 : c.rank === this.state.found[dIdx][this.state.found[dIdx].length-1].rank + 1);
-        if (dType === 'tab') { const col = this.state.tab[dIdx]; if (!col.length) return true; const top = col[col.length-1]; return c.color !== top.color && c.rank === top.rank - 1; }
+        const loc = this.getLoc(c);
+        if (dType === loc.type && dIdx === loc.idx) return false;
+        if (dType === 'free') return this.state.free[dIdx] === null;
+        if (dType === 'found') {
+            const s = this.state.found[dIdx];
+            return c.suit === dIdx && (s.length === 0 ? c.rank === 1 : c.rank === s[s.length-1].rank + 1);
+        }
+        if (dType === 'tab') {
+            const col = this.state.tab[dIdx];
+            if (!col.length) return true;
+            return c.color !== col[col.length-1].color && c.rank === col[col.length-1].rank - 1;
+        }
         return false;
     }
 
-    move(c, dType, dIdx, sweep = false) {
+    executeMove(c, dType, dIdx, sweep = false) {
         if (!sweep && !this.isRestoring) this.redoStack = [];
-        const data = JSON.parse(JSON.stringify(this.state, (k,v) => k==='el'?undefined:v)); data.moveType = dType;
-        this.history.push(data); this.lastMovedId = c.id;
-        const loc = this.getLoc(c), seq = this.getSeq(c, loc);
-        if (loc.type === 'tab') this.state.tab[loc.idx].splice(this.state.tab[loc.idx].indexOf(c)); else if (loc.type === 'free') this.state.free[loc.idx] = null;
-        if (dType === 'tab') this.state.tab[dIdx].push(...seq); else if (dType === 'free') this.state.free[dIdx] = c; else if (dType === 'found') this.state.found[dIdx].push(c);
-        this.selected = null; this.render();
+        this.history.push(this.serialize());
+        const loc = this.getLoc(c);
+        if (loc.type === 'tab') this.state.tab[loc.idx].pop(); else if (loc.type === 'free') this.state.free[loc.idx] = null;
+        if (dType === 'tab') this.state.tab[dIdx].push(c); else if (dType === 'free') this.state.free[dIdx] = c; else if (dType === 'found') this.state.found[dIdx].push(c);
+        this.lastMovedId = c.id; this.selected = null; this.hintId = null; this.render();
         if (!sweep) setTimeout(() => this.autoSweep(), 500);
     }
 
-    giveHint() {
+    autoSweep() {
         const srcs = [...this.state.tab.map(col => col.length ? col[col.length-1] : null), ...this.state.free].filter(x => x);
-        for (let c of srcs) for (let i = 0; i < 8; i++) if (this.isValid(c, 'tab', i)) { c.el.classList.add('wink'); setTimeout(() => c.el.classList.remove('wink'), 1600); return; }
+        for (let c of srcs) {
+            if (this.isValid(c, 'found', c.suit)) {
+                this.executeMove(c, 'found', c.suit, true);
+                setTimeout(() => this.autoSweep(), 300);
+                return;
+            }
+        }
+    }
+
+    giveHint() {
+        const cur = this.serialize();
+        const idx = this.goldenPath.indexOf(cur);
+        if (idx <= 0) return;
+        const target = JSON.parse(this.goldenPath[idx - 1]);
+        const s1 = JSON.parse(cur);
+        let m = null;
+        // Check which tableau column gained a card
+        for (let i = 0; i < 8; i++) {
+            if (target.t[i].length > s1.t[i].length) {
+                m = { c: this.cards.find(c => c.id === target.t[i][target.t[i].length - 1]), t: 'tab', idx: i };
+            }
+        }
+        // Check which freecell gained a card
+        for (let i = 0; i < 4; i++) {
+            if (target.f[i] && target.f[i] !== s1.f[i]) {
+                m = { c: this.cards.find(c => c.id === target.f[i]), t: 'free', idx: i };
+            }
+        }
+        // Check which foundation gained a card
+        const sortedSuits = Object.keys(this.state.found).sort();
+        for (let i = 0; i < 4; i++) {
+            const targetIds = target.v[i].split(',').filter(x => x);
+            const curIds = s1.v[i].split(',').filter(x => x);
+            if (targetIds.length > curIds.length) {
+                m = { c: this.cards.find(c => c.id === targetIds[targetIds.length - 1]), t: 'found', idx: sortedSuits[i] };
+            }
+        }
+        if (m) {
+            if (this.hintId === m.c.id) {
+                this.executeMove(m.c, m.t, m.idx);
+            } else {
+                m.c.el.classList.add('wink');
+                this.hintId = m.c.id;
+            }
+        }
+    }
+
+    performHelp() {
+        if (this.goldenPath.includes(this.serialize())) { this.giveHint(); return; }
+        if (!this.history.length) return;
+        this.undo(true);
+        this.render();
+        setTimeout(() => this.performHelp(), 200);
     }
 
     getLoc(c) {
@@ -237,54 +356,46 @@ class FreeCellGame {
         for(let i=0; i<4; i++) if(this.state.free[i] === c) return {type:'free', idx:i};
         return {type:'none', idx:-1};
     }
-
+    isNextNeeded(c) { const s = this.state.found[c.suit]; return c.rank === (s.length === 0 ? 1 : s[s.length-1].rank + 1); }
+    handleSlotClick(t, i) { 
+        if (this.lastMovedId && t === 'free' && this.state.free[i] === null) {
+            this.executeMove(this.cards.find(c => c.id === this.lastMovedId), 'free', i); return;
+        }
+        if (this.selected && this.isValid(this.selected, t, i)) this.executeMove(this.selected, t, i); else { this.selected = null; this.render(); }
+    }
     showHints() {
         ['free', 'tab'].forEach(t => this.state[t].forEach((_, i) => { if(this.isValid(this.selected, t, i)) document.querySelector(`[data-type="${t}"][data-idx="${i}"]`).classList.add('hint'); }));
         if(this.isValid(this.selected, 'found', this.selected.suit)) document.querySelector(`[data-type="found"][data-suit="${this.selected.suit}"]`).classList.add('hint');
     }
-
-    undo() {
+    undo(silent = false) {
         if (!this.history.length) return;
-        const perform = () => {
-            const current = JSON.parse(JSON.stringify(this.state, (k,v) => k==='el'?undefined:v));
-            current.moveType = this.history[this.history.length-1].moveType;
-            this.redoStack.push(current);
-            const last = this.history.pop();
-            this.state.free = last.free.map(c => c ? this.cards.find(oc => oc.id === c.id) : null);
-            Object.keys(this.state.found).forEach(s => this.state.found[s] = last.found[s].map(c => this.cards.find(oc => oc.id === c.id)));
-            this.state.tab = last.tab.map(col => col.map(c => this.cards.find(oc => oc.id === c.id)));
-        };
-        const type = this.history[this.history.length-1]?.moveType; perform();
-        if (type !== 'found') while (this.history.length > 0 && this.history[this.history.length-1].moveType !== 'found') perform();
-        this.selected = null; this.lastMovedId = null; this.render();
+        this.redoStack.push(this.serialize());
+        this.restore(this.history.pop());
+        if (!silent) this.render();
     }
-
     redo() {
         if (!this.redoStack.length) return;
-        this.isRestoring = true;
-        const perform = () => {
-            const next = this.redoStack.pop();
-            const current = JSON.parse(JSON.stringify(this.state, (k,v) => k==='el'?undefined:v));
-            current.moveType = next.moveType;
-            this.history.push(current);
-            this.state.free = next.free.map(c => c ? this.cards.find(oc => oc.id === c.id) : null);
-            Object.keys(this.state.found).forEach(s => this.state.found[s] = next.found[s].map(c => this.cards.find(oc => oc.id === c.id)));
-            this.state.tab = next.tab.map(col => col.map(c => this.cards.find(oc => oc.id === c.id)));
-        };
-        const type = this.redoStack[this.redoStack.length-1]?.moveType; perform();
-        if (type !== 'found') while (this.redoStack.length > 0 && this.redoStack[this.redoStack.length-1].moveType !== 'found') perform();
-        this.isRestoring = false; this.selected = null; this.render();
+        this.history.push(this.serialize());
+        this.restore(this.redoStack.pop());
+        this.render();
+    }
+    restore(json) {
+        const s = JSON.parse(json);
+        this.state.free = s.f.map(id => id ? this.cards.find(c => c.id === id) : null);
+        this.state.tab = s.t.map(col => col.map(id => this.cards.find(oc => oc.id === id)));
+        const sortedSuits = Object.keys(this.state.found).sort();
+        sortedSuits.forEach((suit, i) => {
+            const ids = s.v[i] ? s.v[i].split(',').filter(x => x) : [];
+            this.state.found[suit] = ids.map(id => this.cards.find(c => c.id === id));
+        });
     }
 }
-
 function toggleTheme() {
     const b = document.body, isD = b.getAttribute('data-theme') === 'dark';
     b.setAttribute('data-theme', isD ? 'light' : 'dark');
     document.getElementById('theme-btn').innerText = isD ? '☀️' : '🌙';
 }
-
 const game = new FreeCellGame();
-window.onload = () => game.init();
 </script>
 </body>
 </html>
