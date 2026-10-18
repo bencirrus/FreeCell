@@ -110,6 +110,24 @@
             0% { transform: scale(1); box-shadow: 0 0 8px #f39c12; }
             100% { transform: scale(1.1); box-shadow: 0 0 26px #e74c3c; }
         }
+        .btn-rewind.sweep-ready {
+            background: linear-gradient(135deg, #10b981, #059669) !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.95), 0 3px #047857 !important;
+            animation: pulseSweep 0.75s infinite alternate !important;
+            border: 2px solid #a7f3d0 !important;
+            cursor: pointer !important;
+            pointer-events: auto !important;
+        }
+        @keyframes pulseSweep {
+            0% { transform: scale(1); box-shadow: 0 0 10px rgba(16, 185, 129, 0.7), 0 3px #047857; }
+            100% { transform: scale(1.08); box-shadow: 0 0 28px rgba(52, 211, 153, 1), 0 0 45px rgba(16, 185, 129, 0.75), 0 3px #047857; }
+        }
+        [data-theme="dark"] .btn-rewind.sweep-ready {
+            background: linear-gradient(135deg, #059669, #047857) !important;
+            border: 2px solid #6ee7b7 !important;
+            box-shadow: 0 0 22px rgba(52, 211, 153, 0.85), 0 3px #022c22 !important;
+        }
         .btn-undo { background: #f39c12; color: white; }
         .btn-redo { background: #2196F3; color: white; }
         .btn-hint { background: #00bcd4; color: white; }
@@ -304,7 +322,7 @@
 
 <div class="controls">
     <button class="btn-new" id="btn-new" onclick="game.onNewClick()">NEW</button>
-    <button class="btn-rewind" id="btn-rewind" onclick="game.rewind()" disabled>REWIND</button>
+    <button class="btn-rewind" id="btn-rewind" onclick="game.onRewindBtnClick()" disabled>REWIND</button>
     <button class="btn-undo" onclick="game.undo()">UNDO</button>
     <button class="btn-redo" onclick="game.redo()">REDO</button>
     <button class="btn-hint" onclick="game.giveHint()">HINT</button>
@@ -430,6 +448,7 @@ class FreeCellGame {
         this.isOnPath=true;
         this.isChecking=false;   // true while async re-solve is running
         this.isRewinding=false;
+        this.isSweeping=false;
         this.currentPathStep=null;
         this.newConfirmTimeout=null;
         this.hintedCard=null;
@@ -479,10 +498,9 @@ class FreeCellGame {
         const gd=GAMES_LIBRARY[this.currentGameIndex];
         this.state={free:Array(4).fill(null),found:{h:[],d:[],c:[],s:[]},tab:Array(8).fill().map(()=>[])};
         this.history=[];this.redoStack=[];this.selected=null;
-        this.hintedCard=null;this.isRewinding=false;this.isChecking=false;
+        this.hintedCard=null;this.isRewinding=false;this.isChecking=false;this.isSweeping=false;
         this.resetNewButton();
-        const rewindBtn=document.getElementById('btn-rewind');
-        if(rewindBtn){rewindBtn.disabled=true;rewindBtn.classList.remove('rewind-needed');}
+        this.updateRewindButton('init');
         gd.deal.forEach((col,ci)=>col.forEach(cId=>{
             const c=this.cards.find(x=>x.id===cId);if(c)this.state.tab[ci].push(c);
         }));
@@ -597,7 +615,6 @@ class FreeCellGame {
         const currHash=this.getHash();
         const pathIdx=this.goldenPath.findIndex(step=>step.hash===currHash);
         const indicator=document.getElementById('path-indicator');
-        const rewindBtn=document.getElementById('btn-rewind');
 
         if(pathIdx!==-1){
             // ✅ On golden path (original or newly adopted)
@@ -605,14 +622,14 @@ class FreeCellGame {
             this.isChecking=false;
             this.currentPathStep=this.goldenPath[pathIdx];
             if(indicator){indicator.className='status-path-on';indicator.innerText='● On Solve Path';}
-            if(rewindBtn){rewindBtn.disabled=true;rewindBtn.classList.remove('rewind-needed');}
+            this.updateRewindButton('on-path');
         } else if(!this.isChecking){
             // Show "checking" immediately so player gets instant feedback
             this.isOnPath=false;
             this.currentPathStep=null;
             this.isChecking=true;
             if(indicator){indicator.className='status-path-check';indicator.innerText='⏳ Checking path...';}
-            if(rewindBtn){rewindBtn.disabled=true;rewindBtn.classList.remove('rewind-needed');}
+            this.updateRewindButton('checking');
 
             this.solveToken=(this.solveToken||0)+1;
             const curToken=this.solveToken;
@@ -633,14 +650,14 @@ class FreeCellGame {
                         this.isOnPath=true;
                         this.currentPathStep=this.goldenPath[newIdx];
                         if(indicator){indicator.className='status-path-on';indicator.innerText='● On Solve Path';}
-                        if(rewindBtn){rewindBtn.disabled=true;rewindBtn.classList.remove('rewind-needed');}
+                        this.updateRewindButton('on-path');
                     }
                 }else{
                     // Genuinely stuck — enable Rewind and warn player
                     this.isOnPath=false;
                     this.currentPathStep=null;
                     if(indicator){indicator.className='status-path-off';indicator.innerText='⚠️ Stuck — tap Rewind';}
-                    if(rewindBtn){rewindBtn.disabled=false;rewindBtn.classList.add('rewind-needed');}
+                    this.updateRewindButton('stuck');
                     this.setStatusMessage('Position is stuck — tap Rewind to get back on track!');
                 }
                 this.render();
@@ -663,7 +680,8 @@ class FreeCellGame {
         if(this.selected){this.selected.el.classList.add('selected');this.showDestinations();}
         if(this.hintedCard)this.hintedCard.el.classList.add('solve-hint');
         const total=Object.values(this.state.found).flat().length;
-        if(total===52)document.getElementById('win-msg').style.display='block';
+        const winMsg=document.getElementById('win-msg');
+        if(winMsg)winMsg.style.display=total===52?'block':'none';
         this.resize();
     }
 
@@ -677,6 +695,7 @@ class FreeCellGame {
 
     // ── Tap & Double-tap ──────────────────────────────────────────────────────
     handleCardClick(c){
+        if(this.isSweeping)return;
         const now=Date.now();
         const dbl=(this.lastTappedCardId===c.id)&&(now-this.lastTapTime<420);
         this.lastTapTime=now;this.lastTappedCardId=c.id;
@@ -685,6 +704,7 @@ class FreeCellGame {
     }
 
     handleSingleTap(c){
+        if(this.isSweeping)return;
         this.hintedCard=null;
         if(this.selected){
             if(this.selected.id===c.id){
@@ -715,6 +735,7 @@ class FreeCellGame {
     }
 
     handleDoubleTap(c){
+        if(this.isSweeping)return;
         this.selected=null;this.hintedCard=null;
         if(this.isValid(c,'found',c.suit)){this.move(c,'found',c.suit);return;}
         for(let i=0;i<8;i++)if(this.isValid(c,'tab',i)&&this.state.tab[i].length>0){this.move(c,'tab',i);return;}
@@ -724,6 +745,7 @@ class FreeCellGame {
     }
 
     handleSlotClick(t,idx){
+        if(this.isSweeping)return;
         if(!this.selected)return;
         const ti=t==='found'?idx:parseInt(idx,10);
         if(this.isValid(this.selected,t,ti)){this.move(this.selected,t,ti);}
@@ -838,7 +860,7 @@ class FreeCellGame {
 
     // ── Strict 1-step Undo / Redo ─────────────────────────────────────────────
     undo(){
-        if(!this.history.length||this.isRewinding)return;
+        if(!this.history.length||this.isRewinding||this.isSweeping)return;
         this.performSingleUndo();
         this.updatePathStatus();this.render();
     }
@@ -852,7 +874,7 @@ class FreeCellGame {
     }
 
     redo(){
-        if(!this.redoStack.length||this.isRewinding)return;
+        if(!this.redoStack.length||this.isRewinding||this.isSweeping)return;
         this.solveToken=(this.solveToken||0)+1;
         this.isRestoring=true;
         const next=this.redoStack.pop();
@@ -873,7 +895,7 @@ class FreeCellGame {
 
     // ── Hint ─────────────────────────────────────────────────────────────────
     giveHint(){
-        if(this.isRewinding)return;
+        if(this.isRewinding||this.isSweeping)return;
         if(this.isChecking)return;
         if(this.isOnPath&&this.currentPathStep&&this.currentPathStep.nextCardId){
             const next=this.cards.find(c=>c.id===this.currentPathStep.nextCardId);
@@ -881,22 +903,198 @@ class FreeCellGame {
             return;
         }
         // Off path & stuck — enable and glow Rewind
+        this.updateRewindButton('stuck');
+    }
+
+    // ── Rewind / Sweep Button Handler & State ───────────────────────────────
+    onRewindBtnClick(){
         const rb=document.getElementById('btn-rewind');
-        if(rb){rb.disabled=false;rb.classList.add('rewind-needed');}
+        if(!rb||rb.disabled||this.isRewinding||this.isSweeping)return;
+        if(rb.classList.contains('sweep-ready')){
+            this.sweepToFinish();
+        }else{
+            this.rewind();
+        }
+    }
+
+    canSweep(){
+        const total=Object.values(this.state.found).reduce((a,b)=>a+b.length,0);
+        if(total>=52||this.isRewinding||this.isSweeping)return false;
+
+        // Condition 1: Greedy foundation sweep finishes the game directly
+        if(this.canGreedySweep())return true;
+
+        // Condition 2: All tableau columns are strictly descending
+        let allDesc=true;
+        for(const col of this.state.tab){
+            for(let i=1;i<col.length;i++){
+                if(col[i].rank>=col[i-1].rank){allDesc=false;break;}
+            }
+            if(!allDesc)break;
+        }
+        if(allDesc)return true;
+
+        // Condition 3: On golden path, and all remaining steps to completion are foundation moves
+        if(this.isOnPath&&this.goldenPath&&this.goldenPath.length>0){
+            const currHash=this.getHash();
+            const currIdx=this.goldenPath.findIndex(s=>s.hash===currHash);
+            if(currIdx!==-1&&currIdx<this.goldenPath.length-1){
+                const rem=this.goldenPath.slice(currIdx,this.goldenPath.length-1);
+                if(rem.length>0&&rem.every(s=>s.toType==='found'))return true;
+            }
+        }
+        return false;
+    }
+
+    canGreedySweep(){
+        const total=Object.values(this.state.found).reduce((a,b)=>a+b.length,0);
+        if(total>=52)return false;
+
+        const testSt=this.state.tab.map(col=>col.map(c=>({suit:c.suit,rank:c.rank})));
+        const testSf=this.state.free.map(c=>c?{suit:c.suit,rank:c.rank}:null);
+        const testSfd={
+            h:this.state.found.h.length,
+            d:this.state.found.d.length,
+            c:this.state.found.c.length,
+            s:this.state.found.s.length
+        };
+
+        let moved=true;
+        while(moved){
+            moved=false;
+            for(let i=0;i<8;i++){
+                const col=testSt[i];
+                if(!col.length)continue;
+                const c=col[col.length-1];
+                if(testSfd[c.suit]===c.rank-1){
+                    col.pop();
+                    testSfd[c.suit]=c.rank;
+                    moved=true;
+                }
+            }
+            for(let i=0;i<4;i++){
+                const c=testSf[i];
+                if(!c)continue;
+                if(testSfd[c.suit]===c.rank-1){
+                    testSf[i]=null;
+                    testSfd[c.suit]=c.rank;
+                    moved=true;
+                }
+            }
+        }
+        return Object.values(testSfd).reduce((a,b)=>a+b,0)===52;
+    }
+
+    updateRewindButton(mode){
+        const rb=document.getElementById('btn-rewind');
+        if(!rb)return;
+
+        if(this.isSweeping){
+            rb.innerText='SWEEPING';
+            rb.disabled=true;
+            rb.classList.remove('rewind-needed');
+            rb.classList.remove('sweep-ready');
+            return;
+        }
+
+        if(mode==='stuck'){
+            rb.innerText='REWIND';
+            rb.disabled=false;
+            rb.classList.remove('sweep-ready');
+            rb.classList.add('rewind-needed');
+            return;
+        }
+
+        if(this.canSweep()){
+            rb.innerText='SWEEP';
+            rb.disabled=false;
+            rb.classList.remove('rewind-needed');
+            rb.classList.add('sweep-ready');
+            return;
+        }
+
+        rb.innerText='REWIND';
+        rb.disabled=true;
+        rb.classList.remove('rewind-needed');
+        rb.classList.remove('sweep-ready');
+    }
+
+    sweepToFinish(){
+        if(this.isSweeping||this.isRewinding)return;
+        this.selected=null;
+        this.hintedCard=null;
+        this.isSweeping=true;
+        this.updateRewindButton('sweeping');
+
+        const step=()=>{
+            if(!this.isSweeping)return;
+            const total=Object.values(this.state.found).reduce((a,b)=>a+b.length,0);
+            if(total>=52){
+                this.isSweeping=false;
+                this.updateRewindButton('done');
+                this.render();
+                return;
+            }
+
+            // Find an exposed card that can legally move to foundation
+            let cardToMove=null;
+
+            // 1. Check tableau bottom cards
+            for(let i=0;i<8;i++){
+                const col=this.state.tab[i];
+                if(!col.length)continue;
+                const c=col[col.length-1];
+                if(this.isValid(c,'found',c.suit)){
+                    cardToMove=c;
+                    break;
+                }
+            }
+
+            // 2. Check freecells if no tableau card can move
+            if(!cardToMove){
+                for(let i=0;i<4;i++){
+                    const c=this.state.free[i];
+                    if(c&&this.isValid(c,'found',c.suit)){
+                        cardToMove=c;
+                        break;
+                    }
+                }
+            }
+
+            // 3. Fallback: check golden path step if available
+            if(!cardToMove&&this.currentPathStep&&this.currentPathStep.nextCardId){
+                const next=this.cards.find(c=>c.id===this.currentPathStep.nextCardId);
+                if(next&&this.isValid(next,this.currentPathStep.toType,this.currentPathStep.toIdx)){
+                    this.move(next,this.currentPathStep.toType,this.currentPathStep.toIdx);
+                    setTimeout(step,75);
+                    return;
+                }
+            }
+
+            if(cardToMove){
+                this.move(cardToMove,'found',cardToMove.suit);
+                setTimeout(step,75);
+            }else{
+                this.isSweeping=false;
+                this.updateRewindButton('done');
+                this.render();
+            }
+        };
+
+        step();
     }
 
     // ── Rewind: step back until we hit any golden path state ─────────────────
     rewind(){
         const rb=document.getElementById('btn-rewind');
-        if(this.isRewinding||(rb&&rb.disabled))return;
+        if(this.isRewinding||this.isSweeping||(rb&&rb.disabled))return;
         if(this.isOnPath){this.setStatusMessage('Already on the winning solve path!');return;}
         this.isRewinding=true;
         this.setStatusMessage('Rewinding back to the solve path…');
         const step=()=>{
             if(!this.history.length||this.isOnPath){
                 this.isRewinding=false;
-                const rb=document.getElementById('btn-rewind');
-                if(rb){rb.disabled=true;rb.classList.remove('rewind-needed');}
+                this.updateRewindButton('on-path');
                 this.setStatusMessage('Back on the solve path! Ready to play.');
                 this.render();return;
             }
@@ -913,6 +1111,7 @@ class FreeCellGame {
 
     // ── New Game 2-tap confirm ────────────────────────────────────────────────
     onNewClick(){
+        if(this.isSweeping)return;
         const btn=document.getElementById('btn-new');if(!btn)return;
         if(btn.classList.contains('btn-confirm')){
             clearTimeout(this.newConfirmTimeout);this.resetNewButton();this.nextGame();
