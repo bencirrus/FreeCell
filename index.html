@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Senior Solitaire Ultra</title>
     <style>
         :root {
@@ -10,88 +10,344 @@
             --card-red: #cc0000; --card-black: #111111;
             --slot-border: rgba(255, 255, 255, 0.7);
             --hint: #00ff88; --highlight: #ffea00;
-            --target-glow: #00e5ff; 
-            --card-w: 110px; --card-h: 160px; --board-width: 1020px; 
+            --target-glow: #00e5ff;
+            --card-w: 110px; --card-h: 160px; --board-width: 1020px;
         }
-        [data-theme="dark"] { --bg: #0f172a; --header: #1e293b; --card: #e2e8f0; --slot-border: rgba(255,255,255,0.2); }
-        
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg); font-family: 'Segoe UI', Arial, sans-serif; overflow-x: hidden; overflow-y: auto; touch-action: manipulation; }
-        
-        /* Centered Button Strip */
-        .controls { width: 100%; height: 65px; background: var(--header); display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.4); z-index: 5000; position: sticky; top: 0; }
-        
-        button { padding: 10px 10px; font-size: 0.85rem; font-weight: bold; cursor: pointer; border-radius: 8px; border: none; box-shadow: 0 3px #444; background: #fff; color: #333; min-width: 55px; }
+        [data-theme="dark"] {
+            --bg: #0f172a; --header: #1e293b; --card: #e2e8f0;
+            --slot-border: rgba(255,255,255,0.2);
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow-x: hidden; overflow-y: auto; touch-action: manipulation;
+            user-select: none; -webkit-user-select: none;
+            -webkit-text-size-adjust: 100%;
+        }
+        .controls {
+            width: 100%;
+            height: 52px;
+            background: var(--header);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            padding-top: calc(4px + env(safe-area-inset-top, 0px));
+            padding-left: calc(8px + env(safe-area-inset-left, 0px));
+            padding-right: calc(8px + env(safe-area-inset-right, 0px));
+            box-sizing: border-box;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            z-index: 5000;
+            position: sticky;
+            top: 0;
+        }
+        button {
+            font-family: inherit;
+            cursor: pointer;
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 3px #333;
+            background: #fff;
+            color: #333;
+            transition: transform 0.1s, background 0.2s, box-shadow 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
         button:active { transform: translateY(2px); box-shadow: 0 1px #222; }
+        .controls button {
+            flex: 1 1 0;
+            min-width: 0;
+            max-width: 90px;
+            height: 42px;
+            padding: 0 4px;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            white-space: nowrap;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+        .controls button#theme-btn {
+            flex: 0 0 42px;
+            max-width: 42px;
+            font-size: 20px;
+            padding: 0;
+            text-transform: none;
+        }
+        .btn-new { background: #ecf0f1; color: #2c3e50; }
+        .btn-new.btn-confirm {
+            background: #e67e22 !important; color: white !important;
+            animation: pulseConfirm 0.8s infinite alternate;
+        }
+        @keyframes pulseConfirm {
+            0% { transform: scale(1); box-shadow: 0 0 10px #e67e22; }
+            100% { transform: scale(1.05); box-shadow: 0 0 22px #e67e22; }
+        }
+        .btn-rewind { background: #8e44ad; color: white; }
+        .btn-rewind:disabled {
+            background: #4a5568 !important;
+            color: #94a3b8 !important;
+            opacity: 0.55;
+            cursor: not-allowed;
+            pointer-events: none;
+            box-shadow: none !important;
+            transform: none !important;
+            animation: none !important;
+            border: none !important;
+        }
+        .btn-rewind.rewind-needed {
+            background: #9b59b6 !important;
+            animation: pulseRewind 0.7s infinite alternate;
+            box-shadow: 0 0 25px #d35400, 0 3px #222 !important;
+            border: 2px solid #fff;
+        }
+        @keyframes pulseRewind {
+            0% { transform: scale(1); box-shadow: 0 0 8px #f39c12; }
+            100% { transform: scale(1.1); box-shadow: 0 0 26px #e74c3c; }
+        }
         .btn-undo { background: #f39c12; color: white; }
         .btn-redo { background: #2196F3; color: white; }
         .btn-hint { background: #00bcd4; color: white; }
-        
-        /* New Scaling Logic: Anchored to Top Center for alignment with buttons */
-        #scaler-wrapper { width: 100%; display: flex; justify-content: center; position: relative; }
-        #scaler { transform-origin: top center; position: relative; margin-top: 10px; }
-        #board { width: var(--board-width); height: 3200px; position: relative; visibility: hidden; } 
-        
-        .slot { width: var(--card-w); height: var(--card-h); border: 4px dashed var(--slot-border); border-radius: 12px; position: absolute; box-sizing: border-box; z-index: 1; }
-        .slot.hint { box-shadow: 0 0 30px var(--hint); border: 5px solid var(--hint); background: rgba(0, 255, 136, 0.2); }
-        
-        .card { width: var(--card-w); height: var(--card-h); background: var(--card); border-radius: 10px; position: absolute; box-shadow: 0 6px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding: 8px 10px; box-sizing: border-box; cursor: pointer; transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.3, 1); z-index: 100; left:0; top:0; }
-        .card.red { color: var(--card-red); } .card.black { color: var(--card-black); }
-        .card.selected { outline: 10px solid var(--highlight); box-shadow: 0 0 50px var(--highlight); z-index: 4000 !important; }
-        
-        @keyframes pulseTarget { 0% { box-shadow: 0 0 10px var(--target-glow); } 50% { box-shadow: 0 0 40px var(--target-glow); } 100% { box-shadow: 0 0 10px var(--target-glow); } }
-        .card.is-target { animation: pulseTarget 2s infinite; border: 3px solid var(--target-glow); }
-        
-        @keyframes hintNudge { 0%, 100% { transform: translate(var(--tx), var(--ty)); } 50% { transform: translate(var(--tx), calc(var(--ty) + 75px)); z-index: 4500; } }
-        .card.wink { animation: hintNudge 0.6s ease-in-out 2; }
 
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; height: 55px; pointer-events: none; }
-        .card-rank { font-size: 2.8rem; font-weight: 900; line-height: 1; margin-top: 5px; }
-        .card-suit-small { font-size: 4.0rem; font-weight: 900; line-height: 0.8; margin-right: -2px; }
+        #scaler-wrapper { width: 100%; display: flex; justify-content: center; position: relative; overflow: hidden; }
+        #scaler { transform-origin: top center; position: relative; margin-top: 10px; }
+        #board { width: var(--board-width); min-height: 1000px; position: relative; visibility: hidden; }
+
+        /* Grouping trays for FreeCells and Foundations (no text labels needed) */
+        .slot-tray {
+            position: absolute;
+            top: -7px;
+            height: 174px;
+            border-radius: 14px;
+            pointer-events: none;
+            z-index: 0;
+            box-sizing: border-box;
+        }
+        .tray-free {
+            left: 3px;
+            width: 498px;
+            background: rgba(0, 0, 0, 0.08);
+            border: 2px dashed rgba(255, 255, 255, 0.35);
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+        .tray-found {
+            left: 504px;
+            width: 498px;
+            background: rgba(0, 0, 0, 0.16);
+            border: 2px solid rgba(255, 215, 0, 0.45);
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 16px rgba(255, 215, 0, 0.12);
+        }
+        [data-theme="dark"] .tray-free {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+        }
+        [data-theme="dark"] .tray-found {
+            background: rgba(255, 215, 0, 0.04);
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 215, 0, 0.1);
+        }
+
+        .slot {
+            width: var(--card-w); height: var(--card-h);
+            border: 4px dashed var(--slot-border); border-radius: 12px;
+            position: absolute; box-sizing: border-box; z-index: 1;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .slot[data-type="free"] {
+            border: 3px dashed rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .slot[data-type="found"] {
+            border: 3px solid rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.1);
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+        .slot[data-type="found"]::after {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5.5rem;
+            line-height: 1;
+            font-weight: 900;
+            pointer-events: none;
+            opacity: 0.35;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .slot[data-type="found"][data-suit="h"]::after { content: '♥'; color: var(--card-red); }
+        .slot[data-type="found"][data-suit="d"]::after { content: '♦'; color: var(--card-red); }
+        .slot[data-type="found"][data-suit="c"]::after { content: '♣'; color: var(--card-black); }
+        .slot[data-type="found"][data-suit="s"]::after { content: '♠'; color: var(--card-black); }
+        [data-theme="dark"] .slot[data-type="found"] {
+            border-color: rgba(255, 215, 0, 0.45);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        [data-theme="dark"] .slot[data-type="found"][data-suit="h"]::after,
+        [data-theme="dark"] .slot[data-type="found"][data-suit="d"]::after {
+            color: #f87171; opacity: 0.45;
+        }
+        [data-theme="dark"] .slot[data-type="found"][data-suit="c"]::after,
+        [data-theme="dark"] .slot[data-type="found"][data-suit="s"]::after {
+            color: #cbd5e1; opacity: 0.35;
+        }
+        .slot.hint {
+            box-shadow: 0 0 32px var(--hint); border: 5px solid var(--hint) !important;
+            background: rgba(0, 255, 136, 0.25) !important; z-index: 50 !important;
+        }
+        .card {
+            width: var(--card-w); height: var(--card-h); background: var(--card);
+            border-radius: 10px; position: absolute;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; padding: 6px 7px;
+            box-sizing: border-box; cursor: pointer;
+            transition: transform 0.35s cubic-bezier(0.2,0.8,0.3,1), box-shadow 0.2s;
+            z-index: 100; left: 0; top: 0;
+        }
+        .card.red   { color: var(--card-red); }
+        .card.black { color: var(--card-black); }
+        .card.selected {
+            outline: 9px solid var(--highlight) !important;
+            box-shadow: 0 0 45px var(--highlight) !important;
+            z-index: 4000 !important;
+        }
+        @keyframes dropTargetGlow {
+            0%   { box-shadow: 0 0 10px var(--hint); outline: 4px solid var(--hint); }
+            50%  { box-shadow: 0 0 35px var(--hint); outline: 5px solid var(--hint); }
+            100% { box-shadow: 0 0 10px var(--hint); outline: 4px solid var(--hint); }
+        }
+        .card.drop-target {
+            animation: dropTargetGlow 1.2s infinite ease-in-out;
+            z-index: 2500 !important;
+        }
+        @keyframes solveHintPulse {
+            0%   { outline: 7px solid #ffd700; box-shadow: 0 0 15px #ffd700; }
+            50%  { outline: 10px solid #ff9f1a; box-shadow: 0 0 45px #ff9f1a; }
+            100% { outline: 7px solid #ffd700; box-shadow: 0 0 15px #ffd700; }
+        }
+        .card.solve-hint {
+            animation: solveHintPulse 1.1s infinite ease-in-out !important;
+            z-index: 4200 !important;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            height: 56px;
+            pointer-events: none;
+        }
+        .card-rank {
+            font-size: 3.1rem;
+            font-weight: 900;
+            line-height: 1;
+            margin-top: 2px;
+            flex-shrink: 0;
+            letter-spacing: -0.02em;
+        }
+        .card-suit-small {
+            font-size: 4.35rem;
+            font-weight: 900;
+            line-height: 0.8;
+            margin-right: -1px;
+            flex-shrink: 0;
+        }
+        .card.val-10 .card-rank,
+        .card[data-val="10"] .card-rank {
+            font-size: 2.85rem;
+            letter-spacing: -0.06em;
+            margin-top: 3px;
+        }
+        .card.val-10 .card-suit-small,
+        .card[data-val="10"] .card-suit-small {
+            font-size: 4.15rem;
+            margin-right: -2px;
+        }
         .card-center { flex-grow: 1; display: flex; justify-content: center; align-items: center; pointer-events: none; overflow: hidden; }
         .suit-large { font-size: 7.0rem; line-height: 1; display: block; }
         .face-svg { width: 95px; height: 110px; fill: currentColor; }
-        
-        #win-msg { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 40px; border-radius: 20px; text-align: center; z-index: 6000; box-shadow: 0 0 200px #000; color: #0b3d21; width: 80%; }
+        #win-msg {
+            display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); background: white;
+            padding: 30px 24px; border-radius: 16px;
+            text-align: center; z-index: 6000; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            color: #0b3d21; width: 90%; max-width: 420px; box-sizing: border-box;
+        }
+        #win-msg h1 {
+            font-size: 2rem;
+            margin: 0 0 10px;
+        }
+        #win-msg p {
+            font-size: 1.05rem;
+            margin: 0 0 20px;
+            line-height: 1.4;
+        }
+        #win-msg button {
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 12px 28px;
+            background: #27ae60; color: white; border-radius: 12px;
+            min-height: 48px; border: none; cursor: pointer;
+            box-shadow: 0 4px #1b7a42;
+        }
+        [data-theme="dark"] #win-msg {
+            background: #1e293b;
+            color: #f8fafc;
+        }
     </style>
 </head>
 <body data-theme="light">
 
 <div class="controls">
-    <button onclick="game.init()">New</button>
-    <button class="btn-undo" onclick="game.undo()">Undo</button>
-    <button class="btn-redo" onclick="game.redo()">Redo</button>
-    <button class="btn-hint" onclick="game.giveHint()">Hint</button>
+    <button class="btn-new" id="btn-new" onclick="game.onNewClick()">NEW</button>
+    <button class="btn-rewind" id="btn-rewind" onclick="game.rewind()" disabled>REWIND</button>
+    <button class="btn-undo" onclick="game.undo()">UNDO</button>
+    <button class="btn-redo" onclick="game.redo()">REDO</button>
+    <button class="btn-hint" onclick="game.giveHint()">HINT</button>
     <button onclick="toggleTheme()" id="theme-btn">☀️</button>
 </div>
 
 <div id="scaler-wrapper">
     <div id="scaler">
         <div id="board">
-            <div class="slot" style="left: 10px; top: 0;" data-type="free" data-idx="0"></div>
-            <div class="slot" style="left: 135px; top: 0;" data-type="free" data-idx="1"></div>
-            <div class="slot" style="left: 260px; top: 0;" data-type="free" data-idx="2"></div>
-            <div class="slot" style="left: 385px; top: 0;" data-type="free" data-idx="3"></div>
-            <div class="slot" style="left: 510px; top: 0;" data-type="found" data-suit="h"></div>
-            <div class="slot" style="left: 635px; top: 0;" data-type="found" data-suit="d"></div>
-            <div class="slot" style="left: 760px; top: 0;" data-type="found" data-suit="c"></div>
-            <div class="slot" style="left: 885px; top: 0;" data-type="found" data-suit="s"></div>
-            <div class="slot" style="left: 10px; top: 180px;" data-type="tab" data-idx="0"></div>
-            <div class="slot" style="left: 135px; top: 180px;" data-type="tab" data-idx="1"></div>
-            <div class="slot" style="left: 260px; top: 180px;" data-type="tab" data-idx="2"></div>
-            <div class="slot" style="left: 385px; top: 180px;" data-type="tab" data-idx="3"></div>
-            <div class="slot" style="left: 510px; top: 180px;" data-type="tab" data-idx="4"></div>
-            <div class="slot" style="left: 635px; top: 180px;" data-type="tab" data-idx="5"></div>
-            <div class="slot" style="left: 760px; top: 180px;" data-type="tab" data-idx="6"></div>
-            <div class="slot" style="left: 885px; top: 180px;" data-type="tab" data-idx="7"></div>
+            <div class="slot-tray tray-free"></div>
+            <div class="slot-tray tray-found"></div>
+            <div class="slot" style="left:10px;top:0"    data-type="free"  data-idx="0"></div>
+            <div class="slot" style="left:135px;top:0"   data-type="free"  data-idx="1"></div>
+            <div class="slot" style="left:260px;top:0"   data-type="free"  data-idx="2"></div>
+            <div class="slot" style="left:385px;top:0"   data-type="free"  data-idx="3"></div>
+            <div class="slot" style="left:510px;top:0"   data-type="found" data-suit="h"></div>
+            <div class="slot" style="left:635px;top:0"   data-type="found" data-suit="d"></div>
+            <div class="slot" style="left:760px;top:0"   data-type="found" data-suit="c"></div>
+            <div class="slot" style="left:885px;top:0"   data-type="found" data-suit="s"></div>
+            <div class="slot" style="left:10px;top:180px"  data-type="tab" data-idx="0"></div>
+            <div class="slot" style="left:135px;top:180px" data-type="tab" data-idx="1"></div>
+            <div class="slot" style="left:260px;top:180px" data-type="tab" data-idx="2"></div>
+            <div class="slot" style="left:385px;top:180px" data-type="tab" data-idx="3"></div>
+            <div class="slot" style="left:510px;top:180px" data-type="tab" data-idx="4"></div>
+            <div class="slot" style="left:635px;top:180px" data-type="tab" data-idx="5"></div>
+            <div class="slot" style="left:760px;top:180px" data-type="tab" data-idx="6"></div>
+            <div class="slot" style="left:885px;top:180px" data-type="tab" data-idx="7"></div>
         </div>
     </div>
 </div>
-
-<div id="win-msg"><h1>Victory!</h1><button onclick="location.reload()">Play Again</button></div>
+<div id="win-msg">
+    <h1>🎉 Victory!</h1>
+    <p>All cards safely placed in the foundations!</p>
+    <button onclick="game.nextGame()">Play Next Game</button>
+</div>
 
 <script>
-const SUITS = { h: { label: '♥', color: 'red' }, d: { label: '♦', color: 'red' }, c: { label: '♣', color: 'black' }, s: { label: '♠', color: 'black' } };
-const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const SUITS = {
+    h:{label:'♥',color:'red',idx:0}, d:{label:'♦',color:'red',idx:1},
+    c:{label:'♣',color:'black',idx:2}, s:{label:'♠',color:'black',idx:3}
+};
+const SUIT_KEYS = ['h','d','c','s'];
+const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 
 const FACE_SVGS = {
     'K': `<svg class="face-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M188.28 59.47c-19.086 0-34.56 15.468-34.56 34.56c0 16.077 10.983 29.57 25.843 33.44l-35.344 81.936c15.877 2.885 27.905 16.784 27.905 33.5c0 18.806-15.23 34.063-34.03 34.063-18.802 0-34.032-15.258-34.032-34.064c0-13.37 7.703-24.924 18.906-30.5l-50.814-79.22c8.007-5.82 13.22-15.24 13.22-25.905c0-17.693-14.314-32.06-32-32.06c-17.688 0-32.032 14.37-32.032 32.06c0 17.693 14.344 32.032 32.03 32.032c.734 0 1.468-.014 2.188-.062l41.907 227h316l41.936-227c.72.048 1.455.063 2.188.063c17.686 0 32.03-14.34 32.03-32.032c0-17.693-14.344-32.06-32.03-32.06c-17.687 0-32.03 14.37-32.03 32.06c-.002 10.723 5.286 20.187 13.373 26l-50.656 79.532c10.778 5.72 18.126 17.04 18.126 30.094c0 18.806-15.23 34.063-34.03 34.063s-34.032-15.258-34.032-34.064c0-17.11 12.602-31.267 29.03-33.687l-34.75-81.532c15.275-3.577 26.657-17.287 26.657-33.657c0-19.094-15.474-34.56-34.56-34.56c-19.09 0-34.564 15.468-34.564 34.56c0 14.798 9.308 27.415 22.375 32.345L268 202.345c14.62 4.52 25.25 18.112 25.25 34.218c0 19.796-16.053 35.843-35.844 35.843c-19.79 0-35.812-16.047-35.812-35.844c0-15.158 9.403-28.102 22.687-33.343l-44.124-76.72c13.234-4.845 22.688-17.552 22.688-32.47c0-19.094-15.475-34.56-34.563-34.56zM97.438 384.936c-23.978 3.763-22.86 39.844 4.188 39.844h6.656l.064.345h294.28l.063-.344h7.625c26.034 0 27.88-35.928 4.313-39.842H97.437z"/></svg>`,
@@ -99,192 +355,592 @@ const FACE_SVGS = {
     'J': `<svg class="face-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M27.47 15.344c62.946 25.422 108.824 61.313 115.843 132.03v.188c52.31 30.132 92.605 72.538 104.28 119.938a109.7 109.7 0 0 1 3.126 22.03c31.737-3.283 64-20.935 87.843-46.624c26.42-28.467 42.056-65.91 36.843-103.03c-15.205 1.917-30.855.922-46.5-2.314c-50.282-10.398-101.7-42.974-148.562-77.875c-4.79-4.21-9.93-8.084-15.406-11.656c-34.787-22.69-82.864-32.686-137.47-32.686zM234.687 41.25l-15.72 23c19.23 13.107 38.792 25.095 58.126 34.72l13.437-19.25c-12.406-18.774-34.986-32.363-55.842-38.47zm239.375 21.375c-16.886 31.464-37.035 52.625-59.72 64.875a108.5 108.5 0 0 1-20.593 8.53c6.67 44.027-11.746 87.505-41.5 119.564c-27.275 29.387-64.424 49.947-102.53 52.844c-4.482 31.48-23.408 62.858-59.75 90.312c40.743 9.164 78.742 9.05 113.436 1.906l7.72-49.03l2.937-18.595l13.03 13.595L359 379.875c27.795-16.753 64.71-44.308 83.22-67.906L413.31 262l-11.468-19.78l22.03 6.093l47.938 13.25c13.232-23.865 21.327-60.527 21.47-98.875c.13-34.855-6.22-70.88-19.22-100.063zM146.092 170.97L20.564 354.75l.812 110.625l175.53-251.5c-13.78-15.612-31.054-30.19-50.81-42.906z"/></svg>`
 };
 
+// ─── Compact A* Solver (numeric encoding, runs mid-game in <50ms) ───────────
+const _COLORS = [1,1,0,0]; // h,d=red; c,s=black
+function _getR(c){return c>>2;}
+function _getS(c){return c&3;}
+function _getC(c){return _COLORS[c&3];}
+function _idToNum(id){return(RANKS.indexOf(id.slice(1))+1)<<2|SUIT_KEYS.indexOf(id[0]);}
+function _numToId(n){return SUIT_KEYS[n&3]+RANKS[(n>>2)-1];}
+
+class _MinHeap{
+    constructor(){this.d=[];}
+    push(x){this.d.push(x);this._up(this.d.length-1);}
+    pop(){if(!this.d.length)return null;const t=this.d[0],l=this.d.pop();if(this.d.length){this.d[0]=l;this._dn(0);}return t;}
+    _up(i){while(i>0){const p=(i-1)>>1;if(this.d[i].f<this.d[p].f){const t=this.d[i];this.d[i]=this.d[p];this.d[p]=t;i=p;}else break;}}
+    _dn(i){const n=this.d.length;while((i<<1)+1<n){let l=(i<<1)+1,r=l+1,b=l;if(r<n&&this.d[r].f<this.d[l].f)b=r;if(this.d[b].f<this.d[i].f){const t=this.d[i];this.d[i]=this.d[b];this.d[b]=t;i=b;}else break;}}
+    size(){return this.d.length;}
+}
+
+function _solve(tabNums, freeNums, foundNums, nodeLimit){
+    nodeLimit = nodeLimit || 20000;
+    function enc(s){
+        return [...s.free].sort((a,b)=>a-b).join(',')+':'+s.found.join(',')+':'+s.tab.map(c=>c.join(',')).sort().join('|');
+    }
+    function h(s){
+        let v=(52-s.found.reduce((a,b)=>a+b,0))*2;
+        for(const col of s.tab)for(let i=0;i<col.length-1;i++)if(_getC(col[i])===_getC(col[i+1])||_getR(col[i])!==_getR(col[i+1])+1)v+=3;
+        return v;
+    }
+    const st={free:[...freeNums],found:[...foundNums],tab:tabNums.map(c=>[...c]),parent:null,move:null,g:0};
+    st.f=h(st);
+    const vis=new Set([enc(st)]);
+    const heap=new _MinHeap();
+    heap.push(st);
+    let steps=0;
+    while(heap.size()>0&&steps<nodeLimit){
+        steps++;
+        const cur=heap.pop();
+        if(cur.found.reduce((a,b)=>a+b,0)===52){
+            const path=[];let nd=cur;
+            while(nd.parent){path.unshift(nd.move);nd=nd.parent;}
+            return{ok:true,path,steps};
+        }
+        const ef=cur.free.filter(x=>x===0).length;
+        const et=cur.tab.filter(x=>x.length===0).length;
+        function add(ns,mv){
+            const k=enc(ns);
+            if(!vis.has(k)){vis.add(k);ns.parent=cur;ns.move=mv;ns.g=cur.g+1;ns.f=ns.g+h(ns);heap.push(ns);}
+        }
+        // → Foundation from tab
+        for(let i=0;i<8;i++){const col=cur.tab[i];if(!col.length)continue;const c=col[col.length-1];const s=_getS(c),r=_getR(c);if(cur.found[s]===r-1){const ns={free:[...cur.free],found:[...cur.found],tab:cur.tab.map((cc,ix)=>ix===i?cc.slice(0,-1):[...cc])};ns.found[s]=r;add(ns,{c,ft:'found',fi:s});}}
+        // → Foundation from free
+        for(let i=0;i<4;i++){const c=cur.free[i];if(!c)continue;const s=_getS(c),r=_getR(c);if(cur.found[s]===r-1){const ns={free:[...cur.free],found:[...cur.found],tab:cur.tab.map(cc=>[...cc])};ns.free[i]=0;ns.found[s]=r;add(ns,{c,ft:'found',fi:s});}}
+        // → Tab to Tab (sequences)
+        for(let i=0;i<8;i++){const col=cur.tab[i];if(!col.length)continue;for(let k=col.length-1;k>=0;k--){const seq=col.slice(k);let vs=true;for(let si=0;si<seq.length-1;si++)if(_getC(seq[si])===_getC(seq[si+1])||_getR(seq[si])!==_getR(seq[si+1])+1){vs=false;break;}if(!vs)break;for(let d=0;d<8;d++){if(d===i)continue;const dc=cur.tab[d];const mx=(ef+1)*Math.pow(2,dc.length===0?Math.max(0,et-1):et);if(seq.length>mx)continue;if(dc.length===0){if(k===0)continue;const ns={free:[...cur.free],found:[...cur.found],tab:cur.tab.map((cc,ix)=>{if(ix===i)return cc.slice(0,k);if(ix===d)return[...cc,...seq];return[...cc];})};add(ns,{c:seq[0],ft:'tab',fi:d});}else{const top=dc[dc.length-1];if(_getC(seq[0])!==_getC(top)&&_getR(seq[0])===_getR(top)-1){const ns={free:[...cur.free],found:[...cur.found],tab:cur.tab.map((cc,ix)=>{if(ix===i)return cc.slice(0,k);if(ix===d)return[...cc,...seq];return[...cc];})};add(ns,{c:seq[0],ft:'tab',fi:d});}}}}}
+        // → Free to Tab
+        for(let i=0;i<4;i++){const c=cur.free[i];if(!c)continue;for(let d=0;d<8;d++){const dc=cur.tab[d];if(dc.length===0||(_getC(c)!==_getC(dc[dc.length-1])&&_getR(c)===_getR(dc[dc.length-1])-1)){const ns={free:[...cur.free],found:[...cur.found],tab:cur.tab.map((col,ix)=>ix===d?[...col,c]:[...col])};ns.free[i]=0;add(ns,{c,ft:'tab',fi:d});}}}
+        // → Tab to Free
+        if(ef>0){const fi=cur.free.indexOf(0);for(let i=0;i<8;i++){const col=cur.tab[i];if(!col.length)continue;const c=col[col.length-1];const ns={free:[...cur.free],found:[...cur.found],tab:cur.tab.map((cc,ix)=>ix===i?cc.slice(0,-1):[...cc])};ns.free[fi]=c;add(ns,{c,ft:'free',fi});}}
+    }
+    return{ok:false,steps};
+}
+// ─── End Solver ───────────────────────────────────────────────────────────────
+
+const GAMES_LIBRARY = [{"id":1,"deal":[["dJ","dK","s2","h4","s3","d6","s6"],["d2","hK","sK","h5","d10","s8","h9"],["c9","s9","d9","s10","s4","d8","c2"],["hJ","s5","dQ","cQ","c10","sQ","c6"],["d5","dA","sJ","c4","c8","h6"],["c7","hQ","sA","hA","h2","d3"],["h7","cK","cA","d4","cJ","h8"],["c5","c3","h3","s7","d7","h10"]],"moves":[{"c":"c2","t":"tab","i":5},{"c":"s6","t":"free","i":0},{"c":"d6","t":"free","i":1},{"c":"h9","t":"free","i":2},{"c":"h8","t":"free","i":3},{"c":"h10","t":"tab","i":6},{"c":"d7","t":"tab","i":1},{"c":"s7","t":"tab","i":2},{"c":"d6","t":"tab","i":2},{"c":"h3","t":"free","i":1},{"c":"s6","t":"tab","i":1},{"c":"c3","t":"free","i":0},{"c":"c5","t":"tab","i":2},{"c":"h4","t":"tab","i":2},{"c":"h9","t":"tab","i":7},{"c":"h6","t":"free","i":2},{"c":"c8","t":"tab","i":7},{"c":"h3","t":"tab","i":4},{"c":"c2","t":"tab","i":4},{"c":"d3","t":"free","i":1},{"c":"h2","t":"tab","i":2},{"c":"hA","t":"found","i":"h"},{"c":"sA","t":"found","i":"s"},{"c":"s2","t":"found","i":"s"},{"c":"h2","t":"found","i":"h"},{"c":"s3","t":"found","i":"s"},{"c":"c3","t":"tab","i":2},{"c":"cJ","t":"tab","i":5},{"c":"d4","t":"free","i":0},{"c":"cA","t":"found","i":"c"},{"c":"c2","t":"found","i":"c"},{"c":"c3","t":"found","i":"c"},{"c":"h3","t":"found","i":"h"},{"c":"c4","t":"found","i":"c"},{"c":"h4","t":"found","i":"h"},{"c":"d4","t":"tab","i":2},{"c":"sJ","t":"free","i":0},{"c":"dA","t":"found","i":"d"},{"c":"d5","t":"tab","i":1},{"c":"cK","t":"tab","i":4},{"c":"h7","t":"tab","i":7},{"c":"dK","t":"tab","i":6},{"c":"c6","t":"tab","i":7},{"c":"sQ","t":"tab","i":6},{"c":"dJ","t":"tab","i":6},{"c":"c10","t":"tab","i":6},{"c":"cQ","t":"tab","i":0},{"c":"dQ","t":"tab","i":4},{"c":"d4","t":"tab","i":3},{"c":"c5","t":"found","i":"c"},{"c":"c6","t":"found","i":"c"},{"c":"sJ","t":"tab","i":4},{"c":"s5","t":"tab","i":2},{"c":"hJ","t":"tab","i":0},{"c":"h10","t":"tab","i":4},{"c":"hQ","t":"tab","i":3},{"c":"c7","t":"found","i":"c"},{"c":"s6","t":"tab","i":7},{"c":"s8","t":"tab","i":5},{"c":"d10","t":"tab","i":3},{"c":"h5","t":"found","i":"h"},{"c":"sK","t":"free","i":0},{"c":"h6","t":"found","i":"h"},{"c":"hK","t":"free","i":2},{"c":"d2","t":"found","i":"d"},{"c":"d3","t":"found","i":"d"},{"c":"d4","t":"found","i":"d"},{"c":"d5","t":"found","i":"d"},{"c":"s5","t":"tab","i":1},{"c":"d6","t":"found","i":"d"},{"c":"d7","t":"found","i":"d"},{"c":"s6","t":"free","i":1},{"c":"h7","t":"found","i":"h"},{"c":"c8","t":"found","i":"c"},{"c":"h8","t":"found","i":"h"},{"c":"h9","t":"found","i":"h"},{"c":"d8","t":"tab","i":7},{"c":"s4","t":"found","i":"s"},{"c":"s10","t":"tab","i":0},{"c":"d9","t":"tab","i":0},{"c":"s9","t":"tab","i":3},{"c":"s5","t":"found","i":"s"},{"c":"c9","t":"found","i":"c"},{"c":"h10","t":"found","i":"h"},{"c":"c10","t":"found","i":"c"},{"c":"s6","t":"found","i":"s"},{"c":"s7","t":"found","i":"s"},{"c":"s8","t":"found","i":"s"},{"c":"s9","t":"found","i":"s"},{"c":"d8","t":"found","i":"d"},{"c":"d9","t":"found","i":"d"},{"c":"s10","t":"found","i":"s"},{"c":"hJ","t":"found","i":"h"},{"c":"d10","t":"found","i":"d"},{"c":"cJ","t":"found","i":"c"},{"c":"cQ","t":"found","i":"c"},{"c":"hQ","t":"found","i":"h"},{"c":"sJ","t":"found","i":"s"},{"c":"dJ","t":"found","i":"d"},{"c":"dQ","t":"found","i":"d"},{"c":"cK","t":"found","i":"c"},{"c":"sQ","t":"found","i":"s"},{"c":"dK","t":"found","i":"d"},{"c":"sK","t":"found","i":"s"},{"c":"hK","t":"found","i":"h"}]},{"id":2,"deal":[["dQ","d4","d10","s7","cA","c3","sA"],["hQ","dJ","hJ","d9","s9","dA","s5"],["hK","sJ","h8","sK","h10","c7","c10"],["h3","c6","h6","h7","s2","d3","cJ"],["h4","sQ","s8","s6","s3","c5"],["h2","d6","s4","c4","s10","d8"],["dK","d2","d5","hA","c9","cK"],["h5","h9","cQ","c8","c2","d7"]],"moves":[{"c":"sA","t":"found","i":"s"},{"c":"c3","t":"free","i":0},{"c":"cA","t":"found","i":"c"},{"c":"s7","t":"tab","i":5},{"c":"d10","t":"tab","i":3},{"c":"d4","t":"tab","i":1},{"c":"cJ","t":"tab","i":0},{"c":"c10","t":"free","i":1},{"c":"c7","t":"free","i":2},{"c":"cK","t":"free","i":3},{"c":"c9","t":"tab","i":0},{"c":"hA","t":"found","i":"h"},{"c":"c3","t":"tab","i":1},{"c":"d8","t":"tab","i":0},{"c":"d7","t":"free","i":0},{"c":"c2","t":"found","i":"c"},{"c":"c3","t":"found","i":"c"},{"c":"d7","t":"tab","i":7},{"c":"s10","t":"free","i":0},{"c":"c4","t":"found","i":"c"},{"c":"c5","t":"found","i":"c"},{"c":"d3","t":"tab","i":5},{"c":"s2","t":"found","i":"s"},{"c":"s3","t":"found","i":"s"},{"c":"s6","t":"tab","i":7},{"c":"h7","t":"tab","i":4},{"c":"h6","t":"tab","i":0},{"c":"c6","t":"found","i":"c"},{"c":"d5","t":"tab","i":7},{"c":"c7","t":"found","i":"c"},{"c":"s5","t":"tab","i":0},{"c":"dA","t":"found","i":"d"},{"c":"d2","t":"found","i":"d"},{"c":"s9","t":"tab","i":2},{"c":"s8","t":"tab","i":1},{"c":"sQ","t":"tab","i":6},{"c":"s4","t":"tab","i":7},{"c":"d6","t":"free","i":2},{"c":"h2","t":"found","i":"h"},{"c":"h3","t":"found","i":"h"},{"c":"h10","t":"tab","i":3},{"c":"sK","t":"tab","i":5},{"c":"h8","t":"tab","i":3},{"c":"h4","t":"found","i":"h"},{"c":"sJ","t":"tab","i":4},{"c":"d3","t":"found","i":"d"},{"c":"d4","t":"found","i":"d"},{"c":"s4","t":"found","i":"s"},{"c":"s5","t":"found","i":"s"},{"c":"d5","t":"found","i":"d"},{"c":"s6","t":"found","i":"s"},{"c":"d6","t":"found","i":"d"},{"c":"d7","t":"found","i":"d"},{"c":"c8","t":"found","i":"c"},{"c":"cQ","t":"tab","i":2},{"c":"h9","t":"free","i":2},{"c":"h5","t":"found","i":"h"},{"c":"h6","t":"found","i":"h"},{"c":"s7","t":"found","i":"s"},{"c":"d8","t":"found","i":"d"},{"c":"c9","t":"found","i":"c"},{"c":"h7","t":"found","i":"h"},{"c":"s8","t":"found","i":"s"},{"c":"d9","t":"found","i":"d"},{"c":"hJ","t":"tab","i":2},{"c":"dJ","t":"tab","i":6},{"c":"d10","t":"found","i":"d"},{"c":"h8","t":"found","i":"h"},{"c":"s9","t":"found","i":"s"},{"c":"dJ","t":"found","i":"d"},{"c":"s10","t":"found","i":"s"},{"c":"sJ","t":"found","i":"s"},{"c":"sQ","t":"found","i":"s"},{"c":"sK","t":"found","i":"s"},{"c":"c10","t":"found","i":"c"},{"c":"cJ","t":"found","i":"c"},{"c":"dQ","t":"found","i":"d"},{"c":"dK","t":"found","i":"d"},{"c":"h9","t":"found","i":"h"},{"c":"h10","t":"found","i":"h"},{"c":"hJ","t":"found","i":"h"},{"c":"hQ","t":"found","i":"h"},{"c":"cQ","t":"found","i":"c"},{"c":"hK","t":"found","i":"h"},{"c":"cK","t":"found","i":"c"}]},{"id":3,"deal":[["hK","d7","h10","c4","h6","s9","h8"],["d2","cJ","cQ","sA","d10","h2","s4"],["hQ","d9","s10","dJ","s2","c3","s5"],["c7","sJ","d5","d8","h3","h4","h5"],["s6","sQ","c6","hA","c9","cA"],["c8","s8","sK","d6","dK","c2"],["c10","h9","h7","d3","s7","hJ"],["d4","dQ","dA","cK","s3","c5"]],"moves":[{"c":"cA","t":"found","i":"c"},{"c":"c2","t":"found","i":"c"},{"c":"s4","t":"tab","i":3},{"c":"h2","t":"free","i":0},{"c":"s9","t":"tab","i":1},{"c":"s5","t":"tab","i":0},{"c":"c3","t":"found","i":"c"},{"c":"s2","t":"free","i":1},{"c":"dJ","t":"free","i":2},{"c":"s10","t":"tab","i":6},{"c":"d9","t":"tab","i":6},{"c":"c9","t":"free","i":3},{"c":"hA","t":"found","i":"h"},{"c":"h2","t":"found","i":"h"},{"c":"h5","t":"tab","i":4},{"c":"h4","t":"tab","i":0},{"c":"h3","t":"found","i":"h"},{"c":"dK","t":"free","i":0},{"c":"c5","t":"tab","i":5},{"c":"s3","t":"tab","i":0},{"c":"hQ","t":"tab","i":7},{"c":"c9","t":"tab","i":2},{"c":"d8","t":"tab","i":2},{"c":"d5","t":"free","i":3},{"c":"sJ","t":"tab","i":7},{"c":"c7","t":"tab","i":1},{"c":"d6","t":"tab","i":1},{"c":"hQ","t":"tab","i":5},{"c":"cK","t":"tab","i":3},{"c":"dA","t":"found","i":"d"},{"c":"dQ","t":"tab","i":3},{"c":"d4","t":"tab","i":1},{"c":"s3","t":"tab","i":1},{"c":"h4","t":"found","i":"h"},{"c":"d5","t":"tab","i":7},{"c":"s4","t":"tab","i":7},{"c":"h5","t":"found","i":"h"},{"c":"c6","t":"free","i":3},{"c":"dJ","t":"tab","i":4},{"c":"s10","t":"tab","i":4},{"c":"hJ","t":"free","i":2},{"c":"s7","t":"tab","i":2},{"c":"d3","t":"tab","i":7},{"c":"s2","t":"tab","i":7},{"c":"h6","t":"tab","i":2},{"c":"c4","t":"found","i":"c"},{"c":"h10","t":"tab","i":5},{"c":"d4","t":"tab","i":2},{"c":"c5","t":"found","i":"c"},{"c":"c6","t":"found","i":"c"},{"c":"s5","t":"tab","i":1},{"c":"h7","t":"free","i":1},{"c":"h6","t":"found","i":"h"},{"c":"h7","t":"found","i":"h"},{"c":"c9","t":"tab","i":5},{"c":"d7","t":"free","i":1},{"c":"sQ","t":"tab","i":0},{"c":"d6","t":"tab","i":5},{"c":"c7","t":"found","i":"c"},{"c":"h8","t":"found","i":"h"},{"c":"d10","t":"tab","i":2},{"c":"sA","t":"found","i":"s"},{"c":"cQ","t":"free","i":3},{"c":"cJ","t":"tab","i":3},{"c":"d2","t":"found","i":"d"},{"c":"h9","t":"found","i":"h"},{"c":"s2","t":"found","i":"s"},{"c":"s3","t":"found","i":"s"},{"c":"d3","t":"found","i":"d"},{"c":"d4","t":"found","i":"d"},{"c":"s4","t":"found","i":"s"},{"c":"s5","t":"found","i":"s"},{"c":"s6","t":"found","i":"s"},{"c":"d5","t":"found","i":"d"},{"c":"d6","t":"found","i":"d"},{"c":"s7","t":"found","i":"s"},{"c":"d7","t":"found","i":"d"},{"c":"sK","t":"tab","i":1},{"c":"s8","t":"found","i":"s"},{"c":"d8","t":"found","i":"d"},{"c":"d9","t":"found","i":"d"},{"c":"s9","t":"found","i":"s"},{"c":"s10","t":"found","i":"s"},{"c":"d10","t":"found","i":"d"},{"c":"dJ","t":"found","i":"d"},{"c":"c8","t":"found","i":"c"},{"c":"c9","t":"found","i":"c"},{"c":"h10","t":"found","i":"h"},{"c":"sJ","t":"found","i":"s"},{"c":"sQ","t":"found","i":"s"},{"c":"c10","t":"found","i":"c"},{"c":"cJ","t":"found","i":"c"},{"c":"dQ","t":"found","i":"d"},{"c":"dK","t":"found","i":"d"},{"c":"hJ","t":"found","i":"h"},{"c":"hQ","t":"found","i":"h"},{"c":"hK","t":"found","i":"h"},{"c":"sK","t":"found","i":"s"},{"c":"cQ","t":"found","i":"c"},{"c":"cK","t":"found","i":"c"}]},{"id":4,"deal":[["sK","h2","d6","s9","h10","hJ","h9"],["hQ","hA","s10","s5","c10","dQ","d7"],["d3","cK","sQ","sA","h7","hK","s4"],["sJ","h8","d4","c8","c3","d2","dA"],["d5","cA","c4","d8","c7","s8"],["dK","d9","s2","h4","c2","c6"],["s6","h6","cQ","c5","cJ","c9"],["s3","h5","s7","h3","d10","dJ"]],"moves":[{"c":"dA","t":"found","i":"d"},{"c":"d7","t":"tab","i":4},{"c":"s8","t":"tab","i":0},{"c":"d8","t":"tab","i":6},{"c":"c6","t":"tab","i":0},{"c":"dQ","t":"free","i":0},{"c":"h9","t":"tab","i":1},{"c":"hJ","t":"free","i":1},{"c":"c9","t":"tab","i":0},{"c":"s4","t":"free","i":2},{"c":"c4","t":"free","i":3},{"c":"cA","t":"found","i":"c"},{"c":"c2","t":"found","i":"c"},{"c":"d2","t":"found","i":"d"},{"c":"c3","t":"found","i":"c"},{"c":"c4","t":"found","i":"c"},{"c":"hK","t":"free","i":3},{"c":"h7","t":"tab","i":3},{"c":"sA","t":"found","i":"s"},{"c":"dJ","t":"tab","i":2},{"c":"d10","t":"tab","i":6},{"c":"d5","t":"tab","i":1},{"c":"h4","t":"tab","i":4},{"c":"s2","t":"found","i":"s"},{"c":"s4","t":"tab","i":1},{"c":"c8","t":"tab","i":5},{"c":"h3","t":"tab","i":1},{"c":"h4","t":"free","i":2},{"c":"hK","t":"tab","i":4},{"c":"sQ","t":"tab","i":4},{"c":"cK","t":"free","i":3},{"c":"d3","t":"found","i":"d"},{"c":"d4","t":"found","i":"d"},{"c":"s7","t":"tab","i":3},{"c":"h5","t":"tab","i":2},{"c":"s3","t":"found","i":"s"},{"c":"dQ","t":"tab","i":7},{"c":"cJ","t":"tab","i":7},{"c":"c5","t":"found","i":"c"},{"c":"cQ","t":"free","i":0},{"c":"h6","t":"tab","i":0},{"c":"h5","t":"tab","i":6},{"c":"s6","t":"tab","i":5},{"c":"h8","t":"tab","i":2},{"c":"s4","t":"tab","i":5},{"c":"d5","t":"found","i":"d"},{"c":"c6","t":"found","i":"c"},{"c":"h6","t":"tab","i":2},{"c":"c7","t":"found","i":"c"},{"c":"c9","t":"tab","i":7},{"c":"h10","t":"tab","i":3},{"c":"s9","t":"tab","i":3},{"c":"d6","t":"found","i":"d"},{"c":"d7","t":"found","i":"d"},{"c":"d8","t":"found","i":"d"},{"c":"cQ","t":"tab","i":6},{"c":"hJ","t":"tab","i":6},{"c":"c10","t":"tab","i":4},{"c":"s5","t":"tab","i":2},{"c":"s10","t":"tab","i":6},{"c":"hA","t":"found","i":"h"},{"c":"h2","t":"found","i":"h"},{"c":"h3","t":"found","i":"h"},{"c":"s4","t":"found","i":"s"},{"c":"s5","t":"found","i":"s"},{"c":"h4","t":"found","i":"h"},{"c":"h5","t":"found","i":"h"},{"c":"d9","t":"tab","i":6},{"c":"h6","t":"found","i":"h"},{"c":"s6","t":"found","i":"s"},{"c":"s7","t":"found","i":"s"},{"c":"s8","t":"found","i":"s"},{"c":"s9","t":"found","i":"s"},{"c":"h7","t":"found","i":"h"},{"c":"h8","t":"found","i":"h"},{"c":"h9","t":"found","i":"h"},{"c":"h10","t":"found","i":"h"},{"c":"c8","t":"found","i":"c"},{"c":"d9","t":"found","i":"d"},{"c":"s10","t":"found","i":"s"},{"c":"sJ","t":"found","i":"s"},{"c":"hJ","t":"found","i":"h"},{"c":"hQ","t":"found","i":"h"},{"c":"c9","t":"found","i":"c"},{"c":"c10","t":"found","i":"c"},{"c":"d10","t":"found","i":"d"},{"c":"dJ","t":"found","i":"d"},{"c":"sQ","t":"found","i":"s"},{"c":"sK","t":"found","i":"s"},{"c":"hK","t":"found","i":"h"},{"c":"cJ","t":"found","i":"c"},{"c":"cQ","t":"found","i":"c"},{"c":"dQ","t":"found","i":"d"},{"c":"dK","t":"found","i":"d"},{"c":"cK","t":"found","i":"c"}]},{"id":5,"deal":[["cA","h5","s3","d10","s5","c2","s9"],["s8","sA","d5","s7","cQ","h10","dA"],["d2","h9","hK","dJ","h8","c10","h7"],["sQ","cK","c3","c7","d9","d6","s10"],["h4","d4","dK","c8","sK","c6"],["c9","h2","c5","cJ","dQ","h6"],["s2","h3","s6","hJ","c4","hQ"],["d3","s4","d8","d7","hA","sJ"]],"moves":[{"c":"dA","t":"found","i":"d"},{"c":"s9","t":"tab","i":1},{"c":"h10","t":"tab","i":7},{"c":"c6","t":"tab","i":2},{"c":"hQ","t":"tab","i":4},{"c":"sJ","t":"tab","i":4},{"c":"hA","t":"found","i":"h"},{"c":"c2","t":"free","i":0},{"c":"s5","t":"tab","i":5},{"c":"d10","t":"free","i":1},{"c":"s3","t":"free","i":2},{"c":"h5","t":"tab","i":2},{"c":"c4","t":"tab","i":2},{"c":"s10","t":"tab","i":6},{"c":"hJ","t":"tab","i":1},{"c":"s6","t":"tab","i":7},{"c":"h3","t":"tab","i":2},{"c":"d6","t":"free","i":3},{"c":"d9","t":"tab","i":1},{"c":"cA","t":"found","i":"c"},{"c":"c7","t":"tab","i":0},{"c":"c2","t":"found","i":"c"},{"c":"c3","t":"found","i":"c"},{"c":"h6","t":"tab","i":0},{"c":"dQ","t":"tab","i":3},{"c":"cJ","t":"tab","i":3},{"c":"c5","t":"free","i":0},{"c":"h2","t":"found","i":"h"},{"c":"h3","t":"found","i":"h"},{"c":"c4","t":"found","i":"c"},{"c":"c5","t":"found","i":"c"},{"c":"h5","t":"tab","i":7},{"c":"c6","t":"found","i":"c"},{"c":"h7","t":"free","i":0},{"c":"d10","t":"tab","i":3},{"c":"c10","t":"free","i":1},{"c":"h8","t":"tab","i":4},{"c":"c9","t":"tab","i":3},{"c":"dJ","t":"tab","i":5},{"c":"c10","t":"tab","i":5},{"c":"hK","t":"free","i":1},{"c":"h9","t":"tab","i":5},{"c":"d2","t":"found","i":"d"},{"c":"h7","t":"tab","i":2},{"c":"s6","t":"tab","i":2},{"c":"d7","t":"free","i":0},{"c":"d8","t":"tab","i":3},{"c":"s4","t":"tab","i":2},{"c":"s2","t":"tab","i":7},{"c":"d3","t":"tab","i":2},{"c":"c7","t":"tab","i":3},{"c":"cQ","t":"tab","i":0},{"c":"s7","t":"tab","i":4},{"c":"d5","t":"tab","i":6},{"c":"sA","t":"found","i":"s"},{"c":"s2","t":"found","i":"s"},{"c":"d3","t":"found","i":"d"},{"c":"s3","t":"found","i":"s"},{"c":"s4","t":"found","i":"s"},{"c":"s5","t":"found","i":"s"},{"c":"s8","t":"tab","i":0},{"c":"h7","t":"tab","i":0},{"c":"sK","t":"tab","i":1},{"c":"c8","t":"tab","i":2},{"c":"dK","t":"tab","i":7},{"c":"d4","t":"found","i":"d"},{"c":"h4","t":"found","i":"h"},{"c":"h5","t":"found","i":"h"},{"c":"s6","t":"found","i":"s"},{"c":"s7","t":"found","i":"s"},{"c":"h6","t":"found","i":"h"},{"c":"h7","t":"found","i":"h"},{"c":"s8","t":"found","i":"s"},{"c":"h8","t":"found","i":"h"},{"c":"s9","t":"found","i":"s"},{"c":"c7","t":"found","i":"c"},{"c":"c8","t":"found","i":"c"},{"c":"h9","t":"found","i":"h"},{"c":"h10","t":"found","i":"h"},{"c":"d5","t":"found","i":"d"},{"c":"cK","t":"tab","i":2},{"c":"d6","t":"found","i":"d"},{"c":"d7","t":"found","i":"d"},{"c":"d8","t":"found","i":"d"},{"c":"d9","t":"found","i":"d"},{"c":"s10","t":"found","i":"s"},{"c":"hJ","t":"found","i":"h"},{"c":"sJ","t":"found","i":"s"},{"c":"hQ","t":"found","i":"h"},{"c":"c9","t":"found","i":"c"},{"c":"d10","t":"found","i":"d"},{"c":"sQ","t":"found","i":"s"},{"c":"sK","t":"found","i":"s"},{"c":"c10","t":"found","i":"c"},{"c":"cJ","t":"found","i":"c"},{"c":"cQ","t":"found","i":"c"},{"c":"dJ","t":"found","i":"d"},{"c":"dQ","t":"found","i":"d"},{"c":"cK","t":"found","i":"c"},{"c":"dK","t":"found","i":"d"},{"c":"hK","t":"found","i":"h"}]},{"id":6,"deal":[["c2","hJ","dA","s4","s3","h4","h9"],["sJ","cQ","s10","d9","c5","c7","h6"],["s5","c3","dQ","cK","d5","sA","cJ"],["h5","c9","sK","s7","d4","s6","cA"],["c6","h7","d8","dK","h8","d7"],["h2","hQ","c8","dJ","d3","s9"],["c10","h3","h10","c4","d10","hK"],["s2","hA","sQ","s8","d2","d6"]],"moves":[{"c":"cA","t":"found","i":"c"},{"c":"s6","t":"tab","i":4},{"c":"h9","t":"free","i":0},{"c":"h4","t":"free","i":1},{"c":"s3","t":"tab","i":3},{"c":"s4","t":"free","i":2},{"c":"dA","t":"found","i":"d"},{"c":"hJ","t":"free","i":3},{"c":"c2","t":"found","i":"c"},{"c":"cJ","t":"tab","i":0},{"c":"sA","t":"found","i":"s"},{"c":"d5","t":"tab","i":4},{"c":"s4","t":"tab","i":4},{"c":"cK","t":"free","i":2},{"c":"cJ","t":"tab","i":2},{"c":"cK","t":"tab","i":0},{"c":"dQ","t":"tab","i":0},{"c":"c3","t":"found","i":"c"},{"c":"d4","t":"tab","i":2},{"c":"d6","t":"tab","i":3},{"c":"d2","t":"found","i":"d"},{"c":"s8","t":"free","i":2},{"c":"sQ","t":"tab","i":6},{"c":"hA","t":"found","i":"h"},{"c":"s2","t":"found","i":"s"},{"c":"s9","t":"tab","i":7},{"c":"d3","t":"found","i":"d"},{"c":"dJ","t":"tab","i":6},{"c":"s3","t":"found","i":"s"},{"c":"d4","t":"found","i":"d"},{"c":"s4","t":"found","i":"s"},{"c":"s5","t":"found","i":"s"},{"c":"c8","t":"tab","i":2},{"c":"d5","t":"found","i":"d"},{"c":"d6","t":"found","i":"d"},{"c":"s6","t":"found","i":"s"},{"c":"s7","t":"found","i":"s"},{"c":"d7","t":"found","i":"d"},{"c":"h8","t":"tab","i":7},{"c":"hQ","t":"tab","i":3},{"c":"h2","t":"found","i":"h"},{"c":"c7","t":"tab","i":7},{"c":"c5","t":"tab","i":5},{"c":"s8","t":"found","i":"s"},{"c":"s10","t":"tab","i":6},{"c":"dK","t":"free","i":2},{"c":"d8","t":"found","i":"d"},{"c":"h7","t":"tab","i":2},{"c":"d9","t":"found","i":"d"},{"c":"c6","t":"tab","i":2},{"c":"cQ","t":"tab","i":4},{"c":"c5","t":"tab","i":7},{"c":"h9","t":"tab","i":6},{"c":"sK","t":"tab","i":5},{"c":"c9","t":"free","i":0},{"c":"sJ","t":"tab","i":5},{"c":"h5","t":"tab","i":2},{"c":"dJ","t":"tab","i":4},{"c":"hK","t":"tab","i":1},{"c":"d10","t":"found","i":"d"},{"c":"c4","t":"found","i":"c"},{"c":"h10","t":"tab","i":0},{"c":"h3","t":"found","i":"h"},{"c":"c5","t":"found","i":"c"},{"c":"h4","t":"found","i":"h"},{"c":"h5","t":"found","i":"h"},{"c":"c6","t":"found","i":"c"},{"c":"h6","t":"found","i":"h"},{"c":"h7","t":"found","i":"h"},{"c":"c7","t":"found","i":"c"},{"c":"c8","t":"found","i":"c"},{"c":"h8","t":"found","i":"h"},{"c":"h9","t":"found","i":"h"},{"c":"h10","t":"found","i":"h"},{"c":"s9","t":"found","i":"s"},{"c":"s10","t":"found","i":"s"},{"c":"dJ","t":"found","i":"d"},{"c":"sJ","t":"found","i":"s"},{"c":"sQ","t":"found","i":"s"},{"c":"c9","t":"found","i":"c"},{"c":"c10","t":"found","i":"c"},{"c":"cJ","t":"found","i":"c"},{"c":"dQ","t":"found","i":"d"},{"c":"cQ","t":"found","i":"c"},{"c":"cK","t":"found","i":"c"},{"c":"dK","t":"found","i":"d"},{"c":"hJ","t":"found","i":"h"},{"c":"hQ","t":"found","i":"h"},{"c":"hK","t":"found","i":"h"},{"c":"sK","t":"found","i":"s"}]},{"id":7,"deal":[["d3","s2","s7","h9","c4","cK","sJ"],["s8","d2","hQ","dQ","h8","h4","hA"],["s4","cQ","s10","cJ","dJ","s3","s6"],["d9","d10","hK","h5","d8","c2","s5"],["d5","cA","h6","hJ","s9","d4"],["c8","sQ","sK","dA","h7","h3"],["c6","c9","dK","c7","c10","d6"],["h2","h10","c5","sA","c3","d7"]],"moves":[{"c":"hA","t":"found","i":"h"},{"c":"h4","t":"tab","i":3},{"c":"s6","t":"tab","i":7},{"c":"s3","t":"tab","i":3},{"c":"s5","t":"tab","i":6},{"c":"c2","t":"tab","i":5},{"c":"sJ","t":"free","i":0},{"c":"cK","t":"free","i":1},{"c":"h3","t":"tab","i":0},{"c":"h8","t":"free","i":2},{"c":"s6","t":"tab","i":5},{"c":"d7","t":"free","i":3},{"c":"c3","t":"tab","i":4},{"c":"sA","t":"found","i":"s"},{"c":"sJ","t":"tab","i":1},{"c":"c5","t":"free","i":0},{"c":"h10","t":"tab","i":1},{"c":"h2","t":"found","i":"h"},{"c":"c5","t":"tab","i":7},{"c":"d4","t":"tab","i":7},{"c":"s9","t":"tab","i":1},{"c":"hJ","t":"free","i":0},{"c":"h8","t":"tab","i":1},{"c":"h6","t":"free","i":2},{"c":"cA","t":"found","i":"c"},{"c":"c2","t":"found","i":"c"},{"c":"h3","t":"found","i":"h"},{"c":"c4","t":"tab","i":4},{"c":"c3","t":"found","i":"c"},{"c":"c4","t":"found","i":"c"},{"c":"d5","t":"tab","i":5},{"c":"h9","t":"tab","i":4},{"c":"s7","t":"tab","i":1},{"c":"s2","t":"found","i":"s"},{"c":"s3","t":"found","i":"s"},{"c":"h4","t":"found","i":"h"},{"c":"d4","t":"tab","i":6},{"c":"c5","t":"found","i":"c"},{"c":"d8","t":"tab","i":7},{"c":"h5","t":"found","i":"h"},{"c":"h6","t":"found","i":"h"},{"c":"h9","t":"free","i":2},{"c":"d7","t":"tab","i":4},{"c":"s6","t":"tab","i":4},{"c":"h7","t":"found","i":"h"},{"c":"dA","t":"found","i":"d"},{"c":"sK","t":"free","i":3},{"c":"sQ","t":"tab","i":3},{"c":"dJ","t":"tab","i":3},{"c":"s7","t":"tab","i":7},{"c":"h8","t":"found","i":"h"},{"c":"h9","t":"found","i":"h"},{"c":"cJ","t":"free","i":2},{"c":"s10","t":"tab","i":3},{"c":"hJ","t":"tab","i":2},{"c":"d8","t":"tab","i":1},{"c":"cQ","t":"tab","i":7},{"c":"s4","t":"found","i":"s"},{"c":"d6","t":"tab","i":1},{"c":"c10","t":"tab","i":7},{"c":"d7","t":"tab","i":5},{"c":"hK","t":"tab","i":2},{"c":"d10","t":"tab","i":4},{"c":"c7","t":"free","i":0},{"c":"d9","t":"tab","i":2},{"c":"dK","t":"tab","i":3},{"c":"c9","t":"tab","i":4},{"c":"c6","t":"found","i":"c"},{"c":"c7","t":"found","i":"c"},{"c":"s6","t":"tab","i":6},{"c":"d7","t":"free","i":0},{"c":"c8","t":"found","i":"c"},{"c":"c9","t":"found","i":"c"},{"c":"c10","t":"found","i":"c"},{"c":"cJ","t":"found","i":"c"},{"c":"d4","t":"tab","i":5},{"c":"s5","t":"found","i":"s"},{"c":"hJ","t":"free","i":2},{"c":"cQ","t":"found","i":"c"},{"c":"cK","t":"found","i":"c"},{"c":"s9","t":"tab","i":4},{"c":"h10","t":"found","i":"h"},{"c":"dQ","t":"tab","i":7},{"c":"hQ","t":"free","i":1},{"c":"d2","t":"found","i":"d"},{"c":"d3","t":"found","i":"d"},{"c":"d4","t":"found","i":"d"},{"c":"d5","t":"found","i":"d"},{"c":"d6","t":"found","i":"d"},{"c":"s6","t":"found","i":"s"},{"c":"s7","t":"found","i":"s"},{"c":"s8","t":"found","i":"s"},{"c":"d7","t":"found","i":"d"},{"c":"d8","t":"found","i":"d"},{"c":"d9","t":"found","i":"d"},{"c":"s9","t":"found","i":"s"},{"c":"s10","t":"found","i":"s"},{"c":"d10","t":"found","i":"d"},{"c":"dJ","t":"found","i":"d"},{"c":"sJ","t":"found","i":"s"},{"c":"sQ","t":"found","i":"s"},{"c":"dQ","t":"found","i":"d"},{"c":"dK","t":"found","i":"d"},{"c":"hJ","t":"found","i":"h"},{"c":"hQ","t":"found","i":"h"},{"c":"hK","t":"found","i":"h"},{"c":"sK","t":"found","i":"s"}]},{"id":8,"deal":[["h4","s8","d7","cQ","cJ","hQ","s6"],["c5","d2","sK","sQ","s9","h2","cK"],["s3","h3","c8","c7","d9","c4","h8"],["d10","hJ","h9","h7","h5","h6","dJ"],["dK","d4","c9","s10","d5","hA"],["d3","s5","h10","s7","sA","c10"],["hK","c6","dQ","d8","c3","sJ"],["cA","d6","s4","c2","s2","dA"]],"moves":[{"c":"hA","t":"found","i":"h"},{"c":"d5","t":"tab","i":0},{"c":"s10","t":"tab","i":3},{"c":"h8","t":"tab","i":4},{"c":"c4","t":"tab","i":0},{"c":"d9","t":"tab","i":3},{"c":"c7","t":"tab","i":4},{"c":"c8","t":"tab","i":3},{"c":"h3","t":"tab","i":0},{"c":"s2","t":"tab","i":0},{"c":"cK","t":"free","i":0},{"c":"h2","t":"found","i":"h"},{"c":"s9","t":"free","i":1},{"c":"sQ","t":"free","i":2},{"c":"c10","t":"free","i":3},{"c":"sA","t":"found","i":"s"},{"c":"dA","t":"found","i":"d"},{"c":"s2","t":"found","i":"s"},{"c":"c2","t":"tab","i":0},{"c":"s3","t":"found","i":"s"},{"c":"s4","t":"found","i":"s"},{"c":"sK","t":"tab","i":2},{"c":"d2","t":"found","i":"d"},{"c":"d6","t":"tab","i":4},{"c":"cA","t":"found","i":"c"},{"c":"s7","t":"tab","i":7},{"c":"h10","t":"tab","i":6},{"c":"s5","t":"found","i":"s"},{"c":"c2","t":"found","i":"c"},{"c":"h3","t":"found","i":"h"},{"c":"d3","t":"found","i":"d"},{"c":"c5","t":"tab","i":4},{"c":"sJ","t":"tab","i":1},{"c":"c3","t":"found","i":"c"},{"c":"d8","t":"tab","i":5},{"c":"dQ","t":"tab","i":2},{"c":"c4","t":"found","i":"c"},{"c":"c5","t":"found","i":"c"},{"c":"c6","t":"found","i":"c"},{"c":"d6","t":"tab","i":7},{"c":"c7","t":"found","i":"c"},{"c":"c8","t":"found","i":"c"},{"c":"sQ","t":"tab","i":6},{"c":"c9","t":"tab","i":1},{"c":"d4","t":"found","i":"d"},{"c":"d5","t":"found","i":"d"},{"c":"s6","t":"found","i":"s"},{"c":"hQ","t":"free","i":2},{"c":"cJ","t":"tab","i":2},{"c":"cQ","t":"tab","i":4},{"c":"d6","t":"found","i":"d"},{"c":"d7","t":"found","i":"d"},{"c":"s8","t":"tab","i":3},{"c":"h4","t":"found","i":"h"},{"c":"d8","t":"found","i":"d"},{"c":"dJ","t":"tab","i":4},{"c":"h6","t":"tab","i":0},{"c":"h5","t":"found","i":"h"},{"c":"h7","t":"tab","i":4},{"c":"h9","t":"tab","i":5},{"c":"hJ","t":"tab","i":6},{"c":"h6","t":"found","i":"h"},{"c":"h7","t":"found","i":"h"},{"c":"h8","t":"found","i":"h"},{"c":"c9","t":"found","i":"c"},{"c":"h9","t":"found","i":"h"},{"c":"h10","t":"found","i":"h"},{"c":"hJ","t":"found","i":"h"},{"c":"s7","t":"found","i":"s"},{"c":"s8","t":"found","i":"s"},{"c":"d9","t":"found","i":"d"},{"c":"d10","t":"found","i":"d"},{"c":"s9","t":"found","i":"s"},{"c":"s10","t":"found","i":"s"},{"c":"sJ","t":"found","i":"s"},{"c":"dJ","t":"found","i":"d"},{"c":"sQ","t":"found","i":"s"},{"c":"hQ","t":"found","i":"h"},{"c":"hK","t":"found","i":"h"},{"c":"c10","t":"found","i":"c"},{"c":"cJ","t":"found","i":"c"},{"c":"dQ","t":"found","i":"d"},{"c":"sK","t":"found","i":"s"},{"c":"cQ","t":"found","i":"c"},{"c":"dK","t":"found","i":"d"},{"c":"cK","t":"found","i":"c"}]},{"id":9,"deal":[["h5","cJ","s4","s10","h6","s9","sQ"],["s8","c2","s7","c3","s3","h3","sJ"],["d7","h8","dK","hQ","c10","cK","d4"],["d2","cA","dJ","d9","d5","hK","c7"],["c6","h7","sA","c4","s5","h2"],["c9","c8","dA","cQ","h10","d3"],["d6","s6","s2","c5","d10","hJ"],["hA","dQ","h4","sK","h9","d8"]],"moves":[{"c":"c7","t":"tab","i":7},{"c":"sQ","t":"tab","i":3},{"c":"hJ","t":"tab","i":3},{"c":"s9","t":"tab","i":6},{"c":"h6","t":"tab","i":7},{"c":"s10","t":"tab","i":3},{"c":"d3","t":"tab","i":0},{"c":"h10","t":"tab","i":1},{"c":"d8","t":"tab","i":6},{"c":"h9","t":"tab","i":3},{"c":"d4","t":"free","i":0},{"c":"cK","t":"free","i":1},{"c":"c10","t":"free","i":2},{"c":"sJ","t":"tab","i":2},{"c":"h3","t":"free","i":3},{"c":"h2","t":"tab","i":1},{"c":"s5","t":"tab","i":6},{"c":"d4","t":"tab","i":6},{"c":"s3","t":"tab","i":6},{"c":"cQ","t":"free","i":0},{"c":"dA","t":"found","i":"d"},{"c":"c8","t":"tab","i":3},{"c":"c9","t":"tab","i":2},{"c":"c4","t":"tab","i":5},{"c":"sA","t":"found","i":"s"},{"c":"h7","t":"tab","i":3},{"c":"c6","t":"tab","i":3},{"c":"sK","t":"tab","i":4},{"c":"h3","t":"tab","i":5},{"c":"h4","t":"free","i":3},{"c":"dQ","t":"tab","i":4},{"c":"hA","t":"found","i":"h"},{"c":"c3","t":"tab","i":7},{"c":"h2","t":"found","i":"h"},{"c":"h3","t":"found","i":"h"},{"c":"h4","t":"found","i":"h"},{"c":"d3","t":"tab","i":5},{"c":"s4","t":"free","i":3},{"c":"cJ","t":"tab","i":4},{"c":"h5","t":"found","i":"h"},{"c":"h10","t":"tab","i":4},{"c":"cK","t":"tab","i":0},{"c":"hQ","t":"tab","i":0},{"c":"dK","t":"free","i":1},{"c":"h8","t":"tab","i":4},{"c":"s7","t":"tab","i":4},{"c":"c2","t":"tab","i":5},{"c":"d7","t":"tab","i":1},{"c":"dK","t":"tab","i":2},{"c":"cQ","t":"tab","i":2},{"c":"c3","t":"free","i":0},{"c":"h6","t":"tab","i":4},{"c":"d10","t":"tab","i":0},{"c":"c5","t":"tab","i":7},{"c":"s2","t":"found","i":"s"},{"c":"s6","t":"tab","i":1},{"c":"s3","t":"found","i":"s"},{"c":"s4","t":"found","i":"s"},{"c":"d4","t":"tab","i":7},{"c":"s5","t":"found","i":"s"},{"c":"s6","t":"found","i":"s"},{"c":"h6","t":"found","i":"h"},{"c":"s7","t":"found","i":"s"},{"c":"c6","t":"tab","i":1},{"c":"h7","t":"found","i":"h"},{"c":"h8","t":"found","i":"h"},{"c":"d7","t":"tab","i":3},{"c":"s8","t":"found","i":"s"},{"c":"hJ","t":"tab","i":2},{"c":"hK","t":"tab","i":1},{"c":"d5","t":"tab","i":2},{"c":"d9","t":"free","i":1},{"c":"dJ","t":"tab","i":1},{"c":"cA","t":"found","i":"c"},{"c":"d2","t":"found","i":"d"},{"c":"c2","t":"found","i":"c"},{"c":"d3","t":"found","i":"d"},{"c":"d4","t":"found","i":"d"},{"c":"d5","t":"found","i":"d"},{"c":"d6","t":"found","i":"d"},{"c":"c3","t":"found","i":"c"},{"c":"c4","t":"found","i":"c"},{"c":"c5","t":"found","i":"c"},{"c":"c6","t":"found","i":"c"},{"c":"c7","t":"found","i":"c"},{"c":"d7","t":"found","i":"d"},{"c":"d8","t":"found","i":"d"},{"c":"s9","t":"found","i":"s"},{"c":"c8","t":"found","i":"c"},{"c":"h9","t":"found","i":"h"},{"c":"s10","t":"found","i":"s"},{"c":"c9","t":"found","i":"c"},{"c":"h10","t":"found","i":"h"},{"c":"hJ","t":"found","i":"h"},{"c":"d9","t":"found","i":"d"},{"c":"d10","t":"found","i":"d"},{"c":"sJ","t":"found","i":"s"},{"c":"hQ","t":"found","i":"h"},{"c":"dJ","t":"found","i":"d"},{"c":"sQ","t":"found","i":"s"},{"c":"hK","t":"found","i":"h"},{"c":"c10","t":"found","i":"c"},{"c":"cJ","t":"found","i":"c"},{"c":"cQ","t":"found","i":"c"},{"c":"cK","t":"found","i":"c"},{"c":"dQ","t":"found","i":"d"},{"c":"dK","t":"found","i":"d"},{"c":"sK","t":"found","i":"s"}]},{"id":10,"deal":[["s5","dK","hJ","s10","d9","cK","d8"],["c5","s2","c9","c7","d10","dA","d6"],["c6","dQ","h6","h10","cA","s8","c10"],["s6","d2","h7","hQ","sQ","d7","c3"],["d5","sA","s7","hK","d3","hA"],["d4","h9","cQ","c4","h4","h5"],["c2","s3","c8","s9","sJ","s4"],["cJ","dJ","h3","sK","h2","h8"]],"moves":[{"c":"hA","t":"found","i":"h"},{"c":"d3","t":"tab","i":6},{"c":"s4","t":"tab","i":5},{"c":"d8","t":"free","i":0},{"c":"cK","t":"free","i":1},{"c":"d6","t":"free","i":2},{"c":"dA","t":"found","i":"d"},{"c":"d10","t":"tab","i":6},{"c":"c7","t":"tab","i":7},{"c":"c9","t":"tab","i":6},{"c":"s2","t":"tab","i":5},{"c":"h8","t":"tab","i":6},{"c":"h2","t":"found","i":"h"},{"c":"c10","t":"free","i":3},{"c":"s8","t":"tab","i":0},{"c":"cA","t":"found","i":"c"},{"c":"d6","t":"tab","i":6},{"c":"c3","t":"free","i":2},{"c":"d7","t":"tab","i":0},{"c":"sQ","t":"tab","i":4},{"c":"hQ","t":"tab","i":7},{"c":"c5","t":"tab","i":6},{"c":"h7","t":"tab","i":1},{"c":"d2","t":"found","i":"d"},{"c":"s6","t":"tab","i":1},{"c":"cK","t":"tab","i":3},{"c":"hQ","t":"tab","i":3},{"c":"sK","t":"free","i":1},{"c":"h3","t":"found","i":"h"},{"c":"dJ","t":"tab","i":4},{"c":"h10","t":"tab","i":7},{"c":"c10","t":"tab","i":4},{"c":"cJ","t":"tab","i":3},{"c":"h5","t":"tab","i":1},{"c":"h4","t":"found","i":"h"},{"c":"c4","t":"free","i":3},{"c":"cQ","t":"tab","i":7},{"c":"h9","t":"tab","i":4},{"c":"d4","t":"tab","i":6},{"c":"sK","t":"tab","i":5},{"c":"h6","t":"free","i":1},{"c":"dQ","t":"tab","i":5},{"c":"c6","t":"tab","i":0},{"c":"cJ","t":"tab","i":5},{"c":"c3","t":"tab","i":6},{"c":"dJ","t":"tab","i":7},{"c":"hK","t":"tab","i":2},{"c":"s7","t":"free","i":2},{"c":"sA","t":"found","i":"s"},{"c":"s2","t":"found","i":"s"},{"c":"d3","t":"found","i":"d"},{"c":"s4","t":"tab","i":4},{"c":"h5","t":"found","i":"h"},{"c":"h6","t":"found","i":"h"},{"c":"d5","t":"tab","i":1},{"c":"s8","t":"tab","i":7},{"c":"hJ","t":"tab","i":2},{"c":"dK","t":"free","i":1},{"c":"d4","t":"tab","i":0},{"c":"d8","t":"tab","i":4},{"c":"s7","t":"tab","i":4},{"c":"d6","t":"tab","i":4},{"c":"c9","t":"tab","i":5},{"c":"sJ","t":"tab","i":3},{"c":"s9","t":"tab","i":3},{"c":"c8","t":"tab","i":2},{"c":"s3","t":"found","i":"s"},{"c":"s4","t":"found","i":"s"},{"c":"c2","t":"found","i":"c"},{"c":"c3","t":"found","i":"c"},{"c":"d4","t":"found","i":"d"},{"c":"s5","t":"found","i":"s"},{"c":"d5","t":"found","i":"d"},{"c":"s6","t":"found","i":"s"},{"c":"h7","t":"found","i":"h"},{"c":"c4","t":"found","i":"c"},{"c":"c5","t":"found","i":"c"},{"c":"d6","t":"found","i":"d"},{"c":"s7","t":"found","i":"s"},{"c":"c6","t":"found","i":"c"},{"c":"c7","t":"found","i":"c"},{"c":"c8","t":"found","i":"c"},{"c":"h8","t":"found","i":"h"},{"c":"c9","t":"found","i":"c"},{"c":"d7","t":"found","i":"d"},{"c":"d8","t":"found","i":"d"},{"c":"d9","t":"found","i":"d"},{"c":"s8","t":"found","i":"s"},{"c":"s9","t":"found","i":"s"},{"c":"s10","t":"found","i":"s"},{"c":"d10","t":"found","i":"d"},{"c":"sJ","t":"found","i":"s"},{"c":"h9","t":"found","i":"h"},{"c":"h10","t":"found","i":"h"},{"c":"hJ","t":"found","i":"h"},{"c":"sQ","t":"found","i":"s"},{"c":"hQ","t":"found","i":"h"},{"c":"hK","t":"found","i":"h"},{"c":"c10","t":"found","i":"c"},{"c":"cJ","t":"found","i":"c"},{"c":"dJ","t":"found","i":"d"},{"c":"dQ","t":"found","i":"d"},{"c":"sK","t":"found","i":"s"},{"c":"cQ","t":"found","i":"c"},{"c":"cK","t":"found","i":"c"},{"c":"dK","t":"found","i":"d"}]},{"id":11,"deal":[["c6","c9","s8","s9","cJ","s5","s4"],["c2","c3","cQ","d9","sQ","dQ","d3"],["h10","c7","sJ","d4","h4","c10","s6"],["hJ","h3","d6","hQ","sK","cK","h5"],["s3","c4","c5","c8","h6","s7"],["s10","sA","h7","h9","dJ","hA"],["dK","d10","h8","h2","d7","d8"],["hK","d2","s2","dA","cA","d5"]],"moves":[{"c":"hA","t":"found","i":"h"},{"c":"s4","t":"tab","i":3},{"c":"d3","t":"tab","i":3},{"c":"h5","t":"tab","i":2},{"c":"dQ","t":"tab","i":3},{"c":"s7","t":"tab","i":6},{"c":"s5","t":"tab","i":4},{"c":"cJ","t":"tab","i":3},{"c":"h6","t":"tab","i":6},{"c":"dJ","t":"tab","i":1},{"c":"c8","t":"tab","i":5},{"c":"d8","t":"tab","i":0},{"c":"s6","t":"tab","i":6},{"c":"c10","t":"tab","i":1},{"c":"h4","t":"tab","i":0},{"c":"d4","t":"tab","i":4},{"c":"h9","t":"tab","i":1},{"c":"h7","t":"tab","i":1},{"c":"sA","t":"found","i":"s"},{"c":"sJ","t":"free","i":0},{"c":"c7","t":"free","i":1},{"c":"d5","t":"free","i":2},{"c":"cA","t":"found","i":"c"},{"c":"s2","t":"tab","i":6},{"c":"d2","t":"free","i":3},{"c":"dA","t":"found","i":"d"},{"c":"s2","t":"found","i":"s"},{"c":"d2","t":"found","i":"d"},{"c":"d3","t":"found","i":"d"},{"c":"d4","t":"found","i":"d"},{"c":"c5","t":"free","i":3},{"c":"d5","t":"found","i":"d"},{"c":"c4","t":"free","i":2},{"c":"s3","t":"found","i":"s"},{"c":"s4","t":"found","i":"s"},{"c":"s6","t":"tab","i":1},{"c":"d7","t":"tab","i":4},{"c":"h2","t":"found","i":"h"},{"c":"h10","t":"tab","i":3},{"c":"h8","t":"tab","i":2},{"c":"c7","t":"tab","i":2},{"c":"c4","t":"tab","i":1},{"c":"h6","t":"tab","i":2},{"c":"s9","t":"tab","i":3},{"c":"s8","t":"free","i":1},{"c":"c9","t":"tab","i":6},{"c":"c6","t":"tab","i":4},{"c":"h6","t":"tab","i":3},{"c":"d10","t":"tab","i":0},{"c":"h8","t":"tab","i":0},{"c":"h4","t":"tab","i":2},{"c":"s5","t":"found","i":"s"},{"c":"h5","t":"tab","i":4},{"c":"s6","t":"found","i":"s"},{"c":"h6","t":"tab","i":0},{"c":"s7","t":"found","i":"s"},{"c":"s8","t":"found","i":"s"},{"c":"h9","t":"tab","i":5},{"c":"sQ","t":"tab","i":6},{"c":"d9","t":"tab","i":6},{"c":"cQ","t":"tab","i":7},{"c":"c3","t":"tab","i":2},{"c":"c2","t":"found","i":"c"},{"c":"c3","t":"found","i":"c"},{"c":"c4","t":"found","i":"c"},{"c":"c5","t":"found","i":"c"},{"c":"h4","t":"free","i":1},{"c":"cK","t":"tab","i":1},{"c":"sK","t":"tab","i":2},{"c":"hQ","t":"tab","i":2},{"c":"d6","t":"found","i":"d"},{"c":"h3","t":"found","i":"h"},{"c":"h4","t":"found","i":"h"},{"c":"h5","t":"found","i":"h"},{"c":"h6","t":"found","i":"h"},{"c":"c6","t":"found","i":"c"},{"c":"c7","t":"found","i":"c"},{"c":"d7","t":"found","i":"d"},{"c":"d8","t":"found","i":"d"},{"c":"s9","t":"found","i":"s"},{"c":"h7","t":"found","i":"h"},{"c":"h8","t":"found","i":"h"},{"c":"c8","t":"found","i":"c"},{"c":"c9","t":"found","i":"c"},{"c":"h9","t":"found","i":"h"},{"c":"h10","t":"found","i":"h"},{"c":"hJ","t":"found","i":"h"},{"c":"hQ","t":"found","i":"h"},{"c":"s10","t":"found","i":"s"},{"c":"d9","t":"found","i":"d"},{"c":"d10","t":"found","i":"d"},{"c":"c10","t":"found","i":"c"},{"c":"cJ","t":"found","i":"c"},{"c":"dJ","t":"found","i":"d"},{"c":"dQ","t":"found","i":"d"},{"c":"cQ","t":"found","i":"c"},{"c":"cK","t":"found","i":"c"},{"c":"hK","t":"found","i":"h"},{"c":"sJ","t":"found","i":"s"},{"c":"sQ","t":"found","i":"s"},{"c":"sK","t":"found","i":"s"},{"c":"dK","t":"found","i":"d"}]},{"id":12,"deal":[["d7","d4","dQ","d8","s9","d9","h8"],["c5","s3","sQ","sJ","dJ","s8","hJ"],["h9","h2","d3","hK","dK","cA","s6"],["hQ","cJ","cQ","h5","c10","h6","s4"],["c6","sK","c3","d5","h3","s10"],["cK","c2","d2","h4","s2","s5"],["d6","d10","c8","c7","h7","hA"],["dA","s7","sA","c9","c4","h10"]],"moves":[{"c":"hA","t":"found","i":"h"},{"c":"s6","t":"tab","i":6},{"c":"cA","t":"found","i":"c"},{"c":"s10","t":"tab","i":1},{"c":"h3","t":"tab","i":3},{"c":"s4","t":"tab","i":4},{"c":"d5","t":"tab","i":6},{"c":"s5","t":"tab","i":3},{"c":"s2","t":"tab","i":6},{"c":"c3","t":"tab","i":5},{"c":"h4","t":"tab","i":3},{"c":"d2","t":"tab","i":3},{"c":"c2","t":"found","i":"c"},{"c":"h8","t":"free","i":0},{"c":"d9","t":"tab","i":1},{"c":"s9","t":"tab","i":7},{"c":"d8","t":"tab","i":7},{"c":"dQ","t":"tab","i":4},{"c":"d4","t":"free","i":1},{"c":"cK","t":"free","i":2},{"c":"sK","t":"tab","i":5},{"c":"c6","t":"tab","i":0},{"c":"d5","t":"tab","i":0},{"c":"h7","t":"tab","i":4},{"c":"c7","t":"tab","i":7},{"c":"c8","t":"tab","i":1},{"c":"d10","t":"free","i":3},{"c":"d6","t":"tab","i":7},{"c":"h7","t":"tab","i":1},{"c":"s5","t":"tab","i":7},{"c":"h6","t":"tab","i":4},{"c":"c10","t":"tab","i":6},{"c":"h5","t":"tab","i":1},{"c":"cQ","t":"tab","i":2},{"c":"cJ","t":"tab","i":5},{"c":"d10","t":"tab","i":5},{"c":"c10","t":"free","i":3},{"c":"cK","t":"tab","i":6},{"c":"hQ","t":"tab","i":6},{"c":"s5","t":"tab","i":4},{"c":"s9","t":"tab","i":5},{"c":"h10","t":"free","i":2},{"c":"c4","t":"tab","i":1},{"c":"c9","t":"tab","i":3},{"c":"sA","t":"found","i":"s"},{"c":"s2","t":"found","i":"s"},{"c":"h8","t":"tab","i":3},{"c":"s7","t":"tab","i":3},{"c":"dA","t":"found","i":"d"},{"c":"dK","t":"tab","i":7},{"c":"hK","t":"free","i":0},{"c":"d3","t":"tab","i":1},{"c":"h2","t":"found","i":"h"},{"c":"h3","t":"found","i":"h"},{"c":"d2","t":"found","i":"d"},{"c":"d3","t":"found","i":"d"},{"c":"c3","t":"found","i":"c"},{"c":"c4","t":"found","i":"c"},{"c":"h4","t":"found","i":"h"},{"c":"h5","t":"found","i":"h"},{"c":"d4","t":"found","i":"d"},{"c":"s5","t":"tab","i":5},{"c":"h6","t":"found","i":"h"},{"c":"c8","t":"tab","i":2},{"c":"hJ","t":"tab","i":7},{"c":"s8","t":"tab","i":4},{"c":"dJ","t":"free","i":1},{"c":"sJ","t":"tab","i":6},{"c":"s8","t":"tab","i":7},{"c":"sQ","t":"tab","i":4},{"c":"s3","t":"found","i":"s"},{"c":"s4","t":"found","i":"s"},{"c":"d5","t":"found","i":"d"},{"c":"c5","t":"found","i":"c"},{"c":"c6","t":"found","i":"c"},{"c":"s5","t":"found","i":"s"},{"c":"s6","t":"found","i":"s"},{"c":"h7","t":"found","i":"h"},{"c":"s7","t":"found","i":"s"},{"c":"h8","t":"found","i":"h"},{"c":"d6","t":"found","i":"d"},{"c":"d7","t":"found","i":"d"},{"c":"c7","t":"found","i":"c"},{"c":"c8","t":"found","i":"c"},{"c":"h9","t":"found","i":"h"},{"c":"c9","t":"found","i":"c"},{"c":"d8","t":"found","i":"d"},{"c":"s8","t":"found","i":"s"},{"c":"s9","t":"found","i":"s"},{"c":"d9","t":"found","i":"d"},{"c":"d10","t":"found","i":"d"},{"c":"s10","t":"found","i":"s"},{"c":"sJ","t":"found","i":"s"},{"c":"sQ","t":"found","i":"s"},{"c":"dJ","t":"found","i":"d"},{"c":"h10","t":"found","i":"h"},{"c":"hJ","t":"found","i":"h"},{"c":"hQ","t":"found","i":"h"},{"c":"hK","t":"found","i":"h"},{"c":"c10","t":"found","i":"c"},{"c":"cJ","t":"found","i":"c"},{"c":"dQ","t":"found","i":"d"},{"c":"sK","t":"found","i":"s"},{"c":"cQ","t":"found","i":"c"},{"c":"cK","t":"found","i":"c"},{"c":"dK","t":"found","i":"d"}]},{"id":13,"deal":[["d8","d7","s5","cJ","d9","h9","s8"],["d2","h4","sK","cA","s9","h10","c2"],["cQ","h7","s10","h3","s6","d5","d3"],["d4","c4","hK","c8","s2","s3","s4"],["h5","h2","dA","c5","d6","dQ"],["sJ","sQ","c10","sA","d10","c6"],["cK","dK","h6","h8","dJ","c3"],["hQ","c7","hA","hJ","s7","c9"]],"moves":[{"c":"c2","t":"tab","i":2},{"c":"d3","t":"tab","i":3},{"c":"s4","t":"tab","i":2},{"c":"c9","t":"tab","i":1},{"c":"s3","t":"free","i":0},{"c":"s2","t":"free","i":1},{"c":"c8","t":"free","i":2},{"c":"dQ","t":"free","i":3},{"c":"d6","t":"tab","i":7},{"c":"c5","t":"tab","i":7},{"c":"dA","t":"found","i":"d"},{"c":"h2","t":"tab","i":6},{"c":"h5","t":"tab","i":5},{"c":"hK","t":"tab","i":4},{"c":"c4","t":"tab","i":5},{"c":"d4","t":"tab","i":7},{"c":"s3","t":"tab","i":7},{"c":"h10","t":"tab","i":3},{"c":"s9","t":"free","i":0},{"c":"cA","t":"found","i":"c"},{"c":"c2","t":"found","i":"c"},{"c":"h2","t":"tab","i":7},{"c":"c3","t":"found","i":"c"},{"c":"s2","t":"tab","i":2},{"c":"hK","t":"free","i":1},{"c":"dQ","t":"tab","i":1},{"c":"d3","t":"tab","i":5},{"c":"d5","t":"tab","i":4},{"c":"s6","t":"free","i":3},{"c":"h3","t":"tab","i":4},{"c":"s10","t":"tab","i":6},{"c":"s6","t":"tab","i":2},{"c":"h9","t":"tab","i":6},{"c":"h7","t":"tab","i":6},{"c":"cQ","t":"free","i":3},{"c":"d9","t":"tab","i":2},{"c":"cJ","t":"tab","i":1},{"c":"c8","t":"tab","i":2},{"c":"s5","t":"free","i":2},{"c":"d7","t":"tab","i":2},{"c":"d8","t":"tab","i":3},{"c":"s2","t":"tab","i":4},{"c":"d3","t":"tab","i":0},{"c":"c4","t":"found","i":"c"},{"c":"h5","t":"tab","i":6},{"c":"c6","t":"tab","i":2},{"c":"d10","t":"tab","i":1},{"c":"sA","t":"found","i":"s"},{"c":"s2","t":"found","i":"s"},{"c":"s9","t":"tab","i":1},{"c":"s4","t":"tab","i":6},{"c":"c10","t":"free","i":0},{"c":"d5","t":"tab","i":2},{"c":"hK","t":"tab","i":4},{"c":"sQ","t":"tab","i":4},{"c":"d8","t":"tab","i":1},{"c":"h10","t":"tab","i":5},{"c":"s5","t":"tab","i":3},{"c":"d4","t":"tab","i":3},{"c":"s7","t":"tab","i":1},{"c":"hJ","t":"tab","i":4},{"c":"hA","t":"found","i":"h"},{"c":"c7","t":"free","i":1},{"c":"c5","t":"found","i":"c"},{"c":"h2","t":"found","i":"h"},{"c":"s3","t":"found","i":"s"},{"c":"h3","t":"found","i":"h"},{"c":"s4","t":"found","i":"s"},{"c":"d5","t":"free","i":2},{"c":"c6","t":"found","i":"c"},{"c":"c7","t":"found","i":"c"},{"c":"d7","t":"free","i":1},{"c":"c8","t":"found","i":"c"},{"c":"c9","t":"found","i":"c"},{"c":"c10","t":"found","i":"c"},{"c":"sJ","t":"tab","i":7},{"c":"s9","t":"tab","i":7},{"c":"d10","t":"tab","i":5},{"c":"cJ","t":"found","i":"c"},{"c":"cQ","t":"found","i":"c"},{"c":"s5","t":"tab","i":7},{"c":"sK","t":"tab","i":3},{"c":"h4","t":"found","i":"h"},{"c":"d2","t":"found","i":"d"},{"c":"d3","t":"found","i":"d"},{"c":"h5","t":"found","i":"h"},{"c":"dJ","t":"tab","i":0},{"c":"h8","t":"tab","i":1},{"c":"h6","t":"found","i":"h"},{"c":"dK","t":"free","i":0},{"c":"cK","t":"found","i":"c"},{"c":"d4","t":"found","i":"d"},{"c":"s5","t":"found","i":"s"},{"c":"s6","t":"found","i":"s"},{"c":"h7","t":"found","i":"h"},{"c":"h8","t":"found","i":"h"},{"c":"d5","t":"found","i":"d"},{"c":"d6","t":"found","i":"d"},{"c":"s7","t":"found","i":"s"},{"c":"s8","t":"found","i":"s"},{"c":"h9","t":"found","i":"h"},{"c":"d7","t":"found","i":"d"},{"c":"d8","t":"found","i":"d"},{"c":"d9","t":"found","i":"d"},{"c":"d10","t":"found","i":"d"},{"c":"s9","t":"found","i":"s"},{"c":"s10","t":"found","i":"s"},{"c":"dJ","t":"found","i":"d"},{"c":"dQ","t":"found","i":"d"},{"c":"h10","t":"found","i":"h"},{"c":"hJ","t":"found","i":"h"},{"c":"sJ","t":"found","i":"s"},{"c":"sQ","t":"found","i":"s"},{"c":"sK","t":"found","i":"s"},{"c":"hQ","t":"found","i":"h"},{"c":"hK","t":"found","i":"h"},{"c":"dK","t":"found","i":"d"}]},{"id":14,"deal":[["h9","h2","h3","d8","s10","c2","h5"],["hQ","cQ","d3","c10","sJ","s2","d2"],["cJ","cA","d9","s6","c4","h4","h6"],["c8","d5","c3","h7","d6","c6","h10"],["s3","s4","d7","sA","dQ","cK"],["d4","c5","h8","sK","dA","d10"],["s9","dK","s7","c9","s5","s8"],["dJ","sQ","c7","hJ","hK","hA"]],"moves":[{"c":"hA","t":"found","i":"h"},{"c":"h5","t":"free","i":0},{"c":"c2","t":"free","i":1},{"c":"s10","t":"free","i":2},{"c":"s8","t":"free","i":3},{"c":"s5","t":"tab","i":2},{"c":"c9","t":"tab","i":3},{"c":"d8","t":"tab","i":3},{"c":"s7","t":"tab","i":3},{"c":"c2","t":"tab","i":0},{"c":"h6","t":"tab","i":3},{"c":"h4","t":"tab","i":3},{"c":"h3","t":"tab","i":2},{"c":"h2","t":"found","i":"h"},{"c":"d10","t":"free","i":1},{"c":"dA","t":"found","i":"d"},{"c":"d2","t":"found","i":"d"},{"c":"s8","t":"tab","i":0},{"c":"cK","t":"free","i":3},{"c":"dQ","t":"tab","i":5},{"c":"sA","t":"found","i":"s"},{"c":"s2","t":"found","i":"s"},{"c":"sJ","t":"tab","i":5},{"c":"d7","t":"tab","i":0},{"c":"d10","t":"tab","i":5},{"c":"c10","t":"free","i":1},{"c":"d3","t":"tab","i":4},{"c":"cQ","t":"tab","i":6},{"c":"c2","t":"tab","i":4},{"c":"h3","t":"found","i":"h"},{"c":"h4","t":"found","i":"h"},{"c":"h5","t":"found","i":"h"},{"c":"hK","t":"free","i":0},{"c":"hJ","t":"tab","i":6},{"c":"c10","t":"tab","i":6},{"c":"c4","t":"free","i":1},{"c":"s6","t":"tab","i":0},{"c":"d9","t":"tab","i":6},{"c":"cA","t":"found","i":"c"},{"c":"c2","t":"found","i":"c"},{"c":"d3","t":"found","i":"d"},{"c":"cJ","t":"tab","i":1},{"c":"s4","t":"tab","i":2},{"c":"s3","t":"found","i":"s"},{"c":"c7","t":"tab","i":4},{"c":"s4","t":"found","i":"s"},{"c":"sQ","t":"tab","i":2},{"c":"s5","t":"found","i":"s"},{"c":"s6","t":"found","i":"s"},{"c":"h6","t":"found","i":"h"},{"c":"s7","t":"found","i":"s"},{"c":"c7","t":"tab","i":3},{"c":"dJ","t":"tab","i":2},{"c":"h10","t":"tab","i":1},{"c":"c6","t":"tab","i":0},{"c":"d6","t":"tab","i":1},{"c":"h7","t":"found","i":"h"},{"c":"c3","t":"found","i":"c"},{"c":"d5","t":"tab","i":0},{"c":"c4","t":"found","i":"c"},{"c":"sK","t":"tab","i":4},{"c":"h8","t":"found","i":"h"},{"c":"c5","t":"found","i":"c"},{"c":"d4","t":"found","i":"d"},{"c":"d5","t":"found","i":"d"},{"c":"c6","t":"found","i":"c"},{"c":"d6","t":"found","i":"d"},{"c":"d7","t":"found","i":"d"},{"c":"s8","t":"found","i":"s"},{"c":"h9","t":"found","i":"h"},{"c":"dK","t":"tab","i":0},{"c":"c7","t":"found","i":"c"},{"c":"d8","t":"found","i":"d"},{"c":"d9","t":"found","i":"d"},{"c":"c8","t":"found","i":"c"},{"c":"c9","t":"found","i":"c"},{"c":"c10","t":"found","i":"c"},{"c":"h10","t":"found","i":"h"},{"c":"hJ","t":"found","i":"h"},{"c":"cJ","t":"found","i":"c"},{"c":"cQ","t":"found","i":"c"},{"c":"hQ","t":"found","i":"h"},{"c":"d10","t":"found","i":"d"},{"c":"dJ","t":"found","i":"d"},{"c":"s9","t":"found","i":"s"},{"c":"hK","t":"found","i":"h"},{"c":"s10","t":"found","i":"s"},{"c":"sJ","t":"found","i":"s"},{"c":"sQ","t":"found","i":"s"},{"c":"dQ","t":"found","i":"d"},{"c":"dK","t":"found","i":"d"},{"c":"sK","t":"found","i":"s"},{"c":"cK","t":"found","i":"c"}]},{"id":15,"deal":[["s9","h5","c9","dK","d6","hK","cA"],["d2","c4","sJ","d5","h2","s4","c10"],["c2","s6","s7","sA","d10","s5","c7"],["sQ","dQ","s2","hA","h10","c8","d4"],["cK","d7","sK","s3","h8","d9"],["s10","d8","h3","dA","hQ","s8"],["h6","cJ","h4","c5","d3","dJ"],["cQ","c3","h7","h9","c6","hJ"]],"moves":[{"c":"cA","t":"found","i":"c"},{"c":"c10","t":"tab","i":6},{"c":"d9","t":"tab","i":6},{"c":"c7","t":"tab","i":4},{"c":"d4","t":"tab","i":2},{"c":"c8","t":"tab","i":6},{"c":"hK","t":"free","i":0},{"c":"d6","t":"tab","i":4},{"c":"s5","t":"tab","i":4},{"c":"dK","t":"free","i":1},{"c":"c9","t":"tab","i":2},{"c":"hJ","t":"free","i":2},{"c":"h5","t":"free","i":3},{"c":"s9","t":"tab","i":3},{"c":"c6","t":"tab","i":0},{"c":"h5","t":"tab","i":0},{"c":"s4","t":"tab","i":0},{"c":"h9","t":"free","i":3},{"c":"h7","t":"tab","i":5},{"c":"c3","t":"tab","i":4},{"c":"h2","t":"tab","i":4},{"c":"s4","t":"tab","i":1},{"c":"hJ","t":"tab","i":7},{"c":"c6","t":"tab","i":5},{"c":"d5","t":"tab","i":0},{"c":"d10","t":"tab","i":1},{"c":"sA","t":"found","i":"s"},{"c":"s7","t":"free","i":2},{"c":"s4","t":"tab","i":5},{"c":"d5","t":"tab","i":2},{"c":"hK","t":"tab","i":0},{"c":"cQ","t":"tab","i":0},{"c":"s6","t":"tab","i":7},{"c":"c2","t":"found","i":"c"},{"c":"h7","t":"tab","i":6},{"c":"s8","t":"tab","i":2},{"c":"hQ","t":"free","i":0},{"c":"dA","t":"found","i":"d"},{"c":"h3","t":"tab","i":6},{"c":"d8","t":"tab","i":1},{"c":"s10","t":"tab","i":0},{"c":"s7","t":"tab","i":1},{"c":"h10","t":"tab","i":5},{"c":"s2","t":"tab","i":6},{"c":"dQ","t":"free","i":2},{"c":"hA","t":"found","i":"h"},{"c":"h2","t":"found","i":"h"},{"c":"c3","t":"found","i":"c"},{"c":"s2","t":"found","i":"s"},{"c":"h3","t":"found","i":"h"},{"c":"h9","t":"tab","i":0},{"c":"s8","t":"tab","i":0},{"c":"d6","t":"tab","i":1},{"c":"h8","t":"tab","i":2},{"c":"s3","t":"found","i":"s"},{"c":"sK","t":"free","i":3},{"c":"d7","t":"tab","i":0},{"c":"s4","t":"found","i":"s"},{"c":"hQ","t":"tab","i":4},{"c":"h8","t":"tab","i":5},{"c":"s6","t":"tab","i":0},{"c":"sJ","t":"tab","i":4},{"c":"c4","t":"found","i":"c"},{"c":"dJ","t":"tab","i":3},{"c":"d3","t":"tab","i":2},{"c":"c5","t":"found","i":"c"},{"c":"h4","t":"found","i":"h"},{"c":"cJ","t":"tab","i":7},{"c":"d2","t":"found","i":"d"},{"c":"d3","t":"found","i":"d"},{"c":"h5","t":"found","i":"h"},{"c":"c6","t":"found","i":"c"},{"c":"d4","t":"found","i":"d"},{"c":"d5","t":"found","i":"d"},{"c":"s5","t":"found","i":"s"},{"c":"s6","t":"found","i":"s"},{"c":"d6","t":"found","i":"d"},{"c":"d7","t":"found","i":"d"},{"c":"s7","t":"found","i":"s"},{"c":"s8","t":"found","i":"s"},{"c":"d8","t":"found","i":"d"},{"c":"c7","t":"found","i":"c"},{"c":"h6","t":"found","i":"h"},{"c":"h7","t":"found","i":"h"},{"c":"c8","t":"found","i":"c"},{"c":"d9","t":"found","i":"d"},{"c":"c9","t":"found","i":"c"},{"c":"c10","t":"found","i":"c"},{"c":"d10","t":"found","i":"d"},{"c":"dJ","t":"found","i":"d"},{"c":"h8","t":"found","i":"h"},{"c":"h9","t":"found","i":"h"},{"c":"s9","t":"found","i":"s"},{"c":"s10","t":"found","i":"s"},{"c":"sJ","t":"found","i":"s"},{"c":"sQ","t":"found","i":"s"},{"c":"h10","t":"found","i":"h"},{"c":"hJ","t":"found","i":"h"},{"c":"hQ","t":"found","i":"h"},{"c":"cJ","t":"found","i":"c"},{"c":"cQ","t":"found","i":"c"},{"c":"hK","t":"found","i":"h"},{"c":"cK","t":"found","i":"c"},{"c":"dQ","t":"found","i":"d"},{"c":"dK","t":"found","i":"d"},{"c":"sK","t":"found","i":"s"}]}];
+
 class FreeCellGame {
     constructor() {
-        this.cards = []; this.selected = null; this.history = []; this.redoStack = []; this.lastMovedId = null;
-        this.state = { free: Array(4).fill(null), found: {h:[],d:[],c:[],s:[]}, tab: Array(8).fill().map(()=>[]) };
+        this.cards=[];
+        this.selected=null;
+        this.history=[];
+        this.redoStack=[];
+        this.currentGameIndex=0;
+        this.goldenPath=[];
+        this.isOnPath=true;
+        this.isChecking=false;   // true while async re-solve is running
+        this.isRewinding=false;
+        this.currentPathStep=null;
+        this.newConfirmTimeout=null;
+        this.hintedCard=null;
+        this.lastTapTime=0;
+        this.lastTappedCardId=null;
+        this.isRestoring=false;
+        this.solveToken=0;
+        this.state={free:Array(4).fill(null),found:{h:[],d:[],c:[],s:[]},tab:Array(8).fill().map(()=>[])};
         this.createDeck();
-        window.addEventListener('resize', () => this.resize());
-        setTimeout(() => this.init(), 150);
+        window.addEventListener('resize',()=>this.resize());
+        window.addEventListener('orientationchange',()=>setTimeout(()=>this.resize(),100));
+        setTimeout(()=>this.init(0),100);
     }
 
-    resize() {
-        const s = document.getElementById('scaler');
-        const scale = Math.min(1, window.innerWidth / 1060);
-        s.style.transform = `scale(${scale})`;
+    resize(){
+        const s=document.getElementById('scaler');
+        const w=document.getElementById('scaler-wrapper');
+        if(!s)return;
+        const scale=Math.min(1,window.innerWidth/1060);
+        s.style.transform=`scale(${scale})`;
+        if(w){
+            const maxCards=this.state&&this.state.tab?Math.max(...this.state.tab.map(col=>col.length),7):7;
+            const boardH=Math.max(820,180+maxCards*75+180);
+            w.style.height=`${Math.ceil(boardH*scale+20)}px`;
+        }
     }
 
-    createDeck() {
-        const board = document.getElementById('board');
-        Object.keys(SUITS).forEach(s => {
-            RANKS.forEach((v, i) => {
-                const cObj = { suit: s, val: v, rank: i+1, color: SUITS[s].color, id: s+v };
-                const div = document.createElement('div');
-                div.className = `card ${cObj.color}`; div.id = cObj.id;
-                const face = FACE_SVGS[v] || `<div class="suit-large">${SUITS[s].label}</div>`;
-                div.innerHTML = `<div class="card-header"><div class="card-rank">${v}</div><div class="card-suit-small">${SUITS[s].label}</div></div><div class="card-center">${face}</div>`;
-                div.onclick = (e) => { e.stopPropagation(); this.handleInteraction(cObj); };
+    createDeck(){
+        const board=document.getElementById('board');
+        SUIT_KEYS.forEach(s=>{
+            RANKS.forEach((v,i)=>{
+                const cObj={suit:s,val:v,rank:i+1,color:SUITS[s].color,id:s+v};
+                const div=document.createElement('div');
+                div.className=`card ${cObj.color} val-${v}`;div.id=cObj.id;div.dataset.val=v;
+                const face=FACE_SVGS[v]||`<div class="suit-large">${SUITS[s].label}</div>`;
+                div.innerHTML=`<div class="card-header"><div class="card-rank">${v}</div><div class="card-suit-small">${SUITS[s].label}</div></div><div class="card-center">${face}</div>`;
+                div.onclick=(e)=>{e.stopPropagation();this.handleCardClick(cObj);};
                 board.appendChild(div);
-                cObj.el = div; this.cards.push(cObj);
+                cObj.el=div;this.cards.push(cObj);
             });
         });
     }
 
-    init() {
-        this.state = { free: Array(4).fill(null), found: {h:[],d:[],c:[],s:[]}, tab: Array(8).fill().map(()=>[]) };
-        this.history = []; this.redoStack = []; this.selected = null; this.lastMovedId = null;
-        let deck = [...this.cards]; deck.sort(() => Math.random() - 0.5);
-        deck.forEach((c, i) => this.state.tab[i % 8].push(c));
-        document.getElementById('win-msg').style.display = 'none';
-        document.getElementById('board').style.visibility = 'visible';
+    init(gameIdx=0){
+        this.solveToken=(this.solveToken||0)+1;
+        this.currentGameIndex=(gameIdx%GAMES_LIBRARY.length+GAMES_LIBRARY.length)%GAMES_LIBRARY.length;
+        const gd=GAMES_LIBRARY[this.currentGameIndex];
+        this.state={free:Array(4).fill(null),found:{h:[],d:[],c:[],s:[]},tab:Array(8).fill().map(()=>[])};
+        this.history=[];this.redoStack=[];this.selected=null;
+        this.hintedCard=null;this.isRewinding=false;this.isChecking=false;
+        this.resetNewButton();
+        const rewindBtn=document.getElementById('btn-rewind');
+        if(rewindBtn){rewindBtn.disabled=true;rewindBtn.classList.remove('rewind-needed');}
+        gd.deal.forEach((col,ci)=>col.forEach(cId=>{
+            const c=this.cards.find(x=>x.id===cId);if(c)this.state.tab[ci].push(c);
+        }));
+        this.buildGoldenPath(gd);
+        this.updatePathStatus();
+        document.getElementById('win-msg').style.display='none';
+        document.getElementById('board').style.visibility='visible';
+        const gnl=document.getElementById('game-num-label');if(gnl)gnl.innerText=`Game #${gd.id}`;
+        this.setStatusMessage('');
+        this.resize();this.render();
+    }
+
+    // ── Build golden path from move list ──────────────────────────────────────
+    buildGoldenPath(gd){
+        let sf=[null,null,null,null],sfd={h:0,d:0,c:0,s:0};
+        let st=gd.deal.map(col=>[...col]);
+        const hash=()=>{
+            const f=sf.map(c=>c||'-').join(',');
+            const fd=`${sfd.h},${sfd.d},${sfd.c},${sfd.s}`;
+            const t=st.map(col=>col.join('-')).join('|');
+            return `${f}:${fd}:${t}`;
+        };
+        this.goldenPath=[];
+        for(const m of gd.moves){
+            this.goldenPath.push({hash:hash(),nextCardId:m.c,toType:m.t,toIdx:m.i});
+            let loc=null;
+            for(let i=0;i<8;i++){const ix=st[i].indexOf(m.c);if(ix!==-1){loc={type:'tab',idx:i,cIdx:ix};break;}}
+            if(!loc)for(let i=0;i<4;i++)if(sf[i]===m.c){loc={type:'free',idx:i};break;}
+            if(loc){
+                const mv=loc.type==='tab'?st[loc.idx].splice(loc.cIdx):[sf[loc.idx]];
+                if(loc.type==='free')sf[loc.idx]=null;
+                if(m.t==='tab')st[m.i].push(...mv);
+                else if(m.t==='free')sf[m.i]=mv[0];
+                else if(m.t==='found')sfd[m.i]++;
+            }
+        }
+        this.goldenPath.push({hash:hash(),nextCardId:null});
+    }
+
+    // ── Live board hash (same format as simulation hash) ─────────────────────
+    getHash(){
+        const f=this.state.free.map(c=>c?c.id:'-').join(',');
+        const fd=`${this.state.found.h.length},${this.state.found.d.length},${this.state.found.c.length},${this.state.found.s.length}`;
+        const t=this.state.tab.map(col=>col.map(c=>c.id).join('-')).join('|');
+        return `${f}:${fd}:${t}`;
+    }
+
+    getSnapshotHash(s){
+        const f=s.free.map(c=>c?c.id:'-').join(',');
+        const fd=`${s.found.h.length},${s.found.d.length},${s.found.c.length},${s.found.s.length}`;
+        const t=s.tab.map(col=>col.map(c=>c.id).join('-')).join('|');
+        return `${f}:${fd}:${t}`;
+    }
+
+    // ── Convert live board to numeric for solver ───────────────────────────────
+    _boardToNums(){
+        const tabN=this.state.tab.map(col=>col.map(c=>_idToNum(c.id)));
+        const freeN=this.state.free.map(c=>c?_idToNum(c.id):0);
+        const foundN=SUIT_KEYS.map(s=>this.state.found[s].length);
+        return{tabN,freeN,foundN};
+    }
+
+    // ── Rebuild goldenPath starting from current board using solver result ────
+    _adoptPath(solverPath){
+        // Convert solver moves back to {hash, nextCardId, toType, toIdx}
+        // We simulate forward from the current live board using the solver's move list
+        let sf=this.state.free.map(c=>c?c.id:null);
+        let sfd={h:this.state.found.h.length,d:this.state.found.d.length,c:this.state.found.c.length,s:this.state.found.s.length};
+        let st=this.state.tab.map(col=>col.map(c=>c.id));
+
+        const hash=()=>{
+            const f=sf.map(c=>c||'-').join(',');
+            const fd=`${sfd.h},${sfd.d},${sfd.c},${sfd.s}`;
+            const t=st.map(col=>col.join('-')).join('|');
+            return `${f}:${fd}:${t}`;
+        };
+
+        const prevSnap=this.history[this.history.length-1];
+        let prefix=[];
+        if(prevSnap){
+            const prevHash=this.getSnapshotHash(prevSnap);
+            const prevIdx=this.goldenPath.findIndex(s=>s.hash===prevHash);
+            if(prevIdx!==-1){
+                prefix=this.goldenPath.slice(0,prevIdx+1);
+            }
+        }
+
+        const newSteps=[];
+        for(const m of solverPath){
+            const cardId=_numToId(m.c);
+            const toType=m.ft;
+            const toIdx=m.ft==='found'?SUIT_KEYS[m.fi]:m.fi;
+            newSteps.push({hash:hash(),nextCardId:cardId,toType,toIdx});
+            // apply move in simulation
+            let loc=null;
+            for(let i=0;i<8;i++){const ix=st[i].indexOf(cardId);if(ix!==-1){loc={type:'tab',idx:i,cIdx:ix};break;}}
+            if(!loc)for(let i=0;i<4;i++)if(sf[i]===cardId){loc={type:'free',idx:i};break;}
+            if(loc){
+                const mv=loc.type==='tab'?st[loc.idx].splice(loc.cIdx):[sf[loc.idx]];
+                if(loc.type==='free')sf[loc.idx]=null;
+                if(toType==='tab')st[toIdx].push(...mv);
+                else if(toType==='free')sf[toIdx]=mv[0];
+                else if(toType==='found')sfd[SUIT_KEYS[m.fi]]++;
+            }
+        }
+        newSteps.push({hash:hash(),nextCardId:null});
+        this.goldenPath=[...prefix,...newSteps];
+    }
+
+    // ── Path status: check golden path, or async-resolve if off it ────────────
+    updatePathStatus(){
+        const currHash=this.getHash();
+        const pathIdx=this.goldenPath.findIndex(step=>step.hash===currHash);
+        const indicator=document.getElementById('path-indicator');
+        const rewindBtn=document.getElementById('btn-rewind');
+
+        if(pathIdx!==-1){
+            // ✅ On golden path (original or newly adopted)
+            this.isOnPath=true;
+            this.isChecking=false;
+            this.currentPathStep=this.goldenPath[pathIdx];
+            if(indicator){indicator.className='status-path-on';indicator.innerText='● On Solve Path';}
+            if(rewindBtn){rewindBtn.disabled=true;rewindBtn.classList.remove('rewind-needed');}
+        } else if(!this.isChecking){
+            // Show "checking" immediately so player gets instant feedback
+            this.isOnPath=false;
+            this.currentPathStep=null;
+            this.isChecking=true;
+            if(indicator){indicator.className='status-path-check';indicator.innerText='⏳ Checking path...';}
+            if(rewindBtn){rewindBtn.disabled=true;rewindBtn.classList.remove('rewind-needed');}
+
+            this.solveToken=(this.solveToken||0)+1;
+            const curToken=this.solveToken;
+
+            // Defer the solve by one frame so render/animation goes first
+            const {tabN,freeN,foundN}=this._boardToNums();
+            setTimeout(()=>{
+                if(this.solveToken!==curToken)return;
+                const result=_solve(tabN,freeN,foundN,20000);
+                if(this.solveToken!==curToken)return;
+                this.isChecking=false;
+                if(result.ok){
+                    // Solvable! Adopt this as the new golden path
+                    this._adoptPath(result.path);
+                    // Re-run status check — should now be on path
+                    const newIdx=this.goldenPath.findIndex(s=>s.hash===this.getHash());
+                    if(newIdx!==-1){
+                        this.isOnPath=true;
+                        this.currentPathStep=this.goldenPath[newIdx];
+                        if(indicator){indicator.className='status-path-on';indicator.innerText='● On Solve Path';}
+                        if(rewindBtn){rewindBtn.disabled=true;rewindBtn.classList.remove('rewind-needed');}
+                    }
+                }else{
+                    // Genuinely stuck — enable Rewind and warn player
+                    this.isOnPath=false;
+                    this.currentPathStep=null;
+                    if(indicator){indicator.className='status-path-off';indicator.innerText='⚠️ Stuck — tap Rewind';}
+                    if(rewindBtn){rewindBtn.disabled=false;rewindBtn.classList.add('rewind-needed');}
+                    this.setStatusMessage('Position is stuck — tap Rewind to get back on track!');
+                }
+                this.render();
+            },0);
+        }
+        // If isChecking is already true, a solve is already in flight — don't double-launch
+    }
+
+    setStatusMessage(msg){}
+
+    render(){
+        document.querySelectorAll('.slot').forEach(s=>{
+            s.classList.remove('hint');
+            s.onclick=()=>this.handleSlotClick(s.dataset.type,s.dataset.idx||s.dataset.suit);
+        });
+        this.state.tab.forEach((col,i)=>col.forEach((c,ci)=>this.updatePos(c,'tab',i,ci)));
+        this.state.free.forEach((c,i)=>{if(c)this.updatePos(c,'free',i,0);});
+        Object.keys(this.state.found).forEach(s=>this.state.found[s].forEach((c,ci)=>this.updatePos(c,'found',s,ci)));
+        this.cards.forEach(c=>c.el.classList.remove('selected','drop-target','solve-hint'));
+        if(this.selected){this.selected.el.classList.add('selected');this.showDestinations();}
+        if(this.hintedCard)this.hintedCard.el.classList.add('solve-hint');
+        const total=Object.values(this.state.found).flat().length;
+        if(total===52)document.getElementById('win-msg').style.display='block';
         this.resize();
+    }
+
+    updatePos(card,type,gIdx,cIdx){
+        const sel=`[data-type="${type}"]${type==='found'?`[data-suit="${gIdx}"]`:`[data-idx="${gIdx}"]`}`;
+        const slot=document.querySelector(sel);if(!slot)return;
+        const x=slot.offsetLeft,y=slot.offsetTop+(type==='tab'?cIdx*75:0);
+        card.el.style.setProperty('--tx',`${x}px`);card.el.style.setProperty('--ty',`${y}px`);
+        card.el.style.transform=`translate(${x}px,${y}px)`;card.el.style.zIndex=cIdx+100;
+    }
+
+    // ── Tap & Double-tap ──────────────────────────────────────────────────────
+    handleCardClick(c){
+        const now=Date.now();
+        const dbl=(this.lastTappedCardId===c.id)&&(now-this.lastTapTime<420);
+        this.lastTapTime=now;this.lastTappedCardId=c.id;
+        if(dbl){this.handleDoubleTap(c);return;}
+        this.handleSingleTap(c);
+    }
+
+    handleSingleTap(c){
+        this.hintedCard=null;
+        if(this.selected){
+            if(this.selected.id===c.id){
+                const dest=this.getSingleDestination(c);
+                if(dest){
+                    this.move(c,dest.type,dest.idx);
+                    return;
+                }
+                this.selected=null;this.render();return;
+            }
+            const loc=this.getLoc(c);
+            if(loc.type==='tab'){
+                const col=this.state.tab[loc.idx],bot=col[col.length-1];
+                if(bot&&bot.id===c.id&&this.isValid(this.selected,'tab',loc.idx)){this.move(this.selected,'tab',loc.idx);return;}
+            }else if(loc.type==='found'){
+                if(this.isValid(this.selected,'found',c.suit)){this.move(this.selected,'found',c.suit);return;}
+            }
+            const newSeq=this.getSeq(c,this.getLoc(c));
+            if(newSeq){this.selected=c;this.render();return;}
+            this.selected=null;this.render();return;
+        }
+        const loc=this.getLoc(c);
+        if(loc.type==='found')return;
+        const seq=this.getSeq(c,loc);
+        if(!seq)return;
+        this.selected=c;
         this.render();
     }
 
-    render() {
-        document.querySelectorAll('.slot').forEach(s => {
-            s.classList.remove('hint');
-            s.onclick = () => this.handleSlotClick(s.dataset.type, s.dataset.idx || s.dataset.suit);
-        });
-        this.state.tab.forEach((col, i) => col.forEach((c, ci) => this.updatePos(c, 'tab', i, ci)));
-        this.state.free.forEach((c, i) => { if(c) this.updatePos(c, 'free', i, 0); });
-        Object.keys(this.state.found).forEach(s => this.state.found[s].forEach(c => this.updatePos(c, 'found', s, 0)));
-        this.cards.forEach(c => { 
-            c.el.classList.remove('selected', 'is-target', 'wink');
-            if (this.isNextNeeded(c)) c.el.classList.add('is-target');
-        });
-        if (this.selected) { this.selected.el.classList.add('selected'); this.showHints(); }
-        if (Object.values(this.state.found).flat().length === 52) document.getElementById('win-msg').style.display = 'block';
+    handleDoubleTap(c){
+        this.selected=null;this.hintedCard=null;
+        if(this.isValid(c,'found',c.suit)){this.move(c,'found',c.suit);return;}
+        for(let i=0;i<8;i++)if(this.isValid(c,'tab',i)&&this.state.tab[i].length>0){this.move(c,'tab',i);return;}
+        for(let i=0;i<8;i++)if(this.isValid(c,'tab',i)&&this.state.tab[i].length===0){this.move(c,'tab',i);return;}
+        for(let i=0;i<4;i++)if(this.isValid(c,'free',i)){this.move(c,'free',i);return;}
+        this.render();
     }
 
-    updatePos(card, type, gIdx, cIdx) {
-        const sel = `[data-type="${type}"]${type==='found' ? `[data-suit="${gIdx}"]` : `[data-idx="${gIdx}"]`}`;
-        const slot = document.querySelector(sel);
-        if(!slot) return;
-        const x = slot.offsetLeft, y = slot.offsetTop + (type === 'tab' ? cIdx * 75 : 0);
-        card.el.style.setProperty('--tx', `${x}px`); card.el.style.setProperty('--ty', `${y}px`);
-        card.el.style.transform = `translate(${x}px, ${y}px)`; card.el.style.zIndex = cIdx + 100;
+    handleSlotClick(t,idx){
+        if(!this.selected)return;
+        const ti=t==='found'?idx:parseInt(idx,10);
+        if(this.isValid(this.selected,t,ti)){this.move(this.selected,t,ti);}
+        else{this.selected=null;this.render();}
     }
 
-    handleInteraction(c) {
-        const loc = this.getLoc(c);
-        if (loc.type === 'free' && this.lastMovedId === c.id) { this.undo(); return; }
-        const seq = this.getSeq(c, loc); if (!seq) return;
-        if (this.selected) {
-            if (this.isValid(this.selected, loc.type, loc.idx)) { this.move(this.selected, loc.type, loc.idx); return; }
-            this.selected = null;
+    getSingleDestination(c){
+        // 1. Foundation destination takes absolute priority
+        if(this.isValid(c,'found',c.suit)){
+            return {type:'found', idx:c.suit};
         }
-        const best = this.findBest(c);
-        if (best) this.move(c, best.type, best.idx); else { this.selected = c; this.render(); }
-    }
 
-    getSeq(c, loc) {
-        if (loc.type !== 'tab') return [c];
-        const col = this.state.tab[loc.idx], idx = col.indexOf(c), s = col.slice(idx);
-        for (let i = 0; i < s.length - 1; i++) if (s[i].color === s[i+1].color || s[i].rank !== s[i+1].rank + 1) return null;
-        return s;
-    }
+        // 2. Check tableau destinations (separate non-empty columns from empty columns)
+        const tabNonEmpty=[];
+        const tabEmpty=[];
+        for(let i=0;i<8;i++){
+            if(this.isValid(c,'tab',i)){
+                if(this.state.tab[i].length>0) tabNonEmpty.push({type:'tab', idx:i});
+                else tabEmpty.push({type:'tab', idx:i});
+            }
+        }
 
-    handleSlotClick(t, idx) { if (this.selected && this.isValid(this.selected, t, idx)) this.move(this.selected, t, idx); else { this.selected = null; this.render(); } }
+        // 3. Check free cell destinations
+        const freeDests=[];
+        for(let i=0;i<4;i++){
+            if(this.isValid(c,'free',i)) freeDests.push({type:'free', idx:i});
+        }
 
-    findBest(c) {
-        if (this.isValid(c, 'found', c.suit)) return { type: 'found', idx: c.suit };
-        let tDest = null, eDest = null;
-        for (let i = 0; i < 8; i++) if (this.isValid(c, 'tab', i)) { if (this.state.tab[i].length > 0) { tDest = { type: 'tab', idx: i }; break; } else if (eDest === null) eDest = { type: 'tab', idx: i }; }
-        if (tDest) return tDest; if (eDest) return eDest;
-        for (let i = 0; i < 4; i++) if (this.isValid(c, 'free', i)) return { type: 'free', idx: i };
+        // Priority 2a: Exactly one non-empty tableau column to build on (e.g. 7 on 8)
+        if(tabNonEmpty.length===1) return tabNonEmpty[0];
+
+        // Priority 2b: Multiple non-empty tableau columns (e.g. 8♥ vs 8♦)
+        // These are distinct strategic choices, so do not auto-choose
+        if(tabNonEmpty.length>1) return null;
+
+        // Priority 3: Empty tableau columns (all empty columns are equal options)
+        // If there are one or more equal empty columns, sweep to the first one
+        if(tabEmpty.length>0) return tabEmpty[0];
+
+        // Priority 4: Free cells (all empty free cells are equal options)
+        // If there are one or more equal free cells, sweep to the first one
+        if(freeDests.length>0) return freeDests[0];
+
         return null;
     }
 
-    isNextNeeded(c) { const s = this.state.found[c.suit]; return c.rank === (s.length === 0 ? 1 : s[s.length-1].rank + 1); }
+    showDestinations(){
+        if(!this.selected)return;
 
-    autoSweep() {
-        let changed = false;
-        const srcs = [...this.state.tab.map((col, i) => col.length ? {c: col[col.length-1], t:'tab', idx:i} : null), ...this.state.free.map((c, i) => c ? {c, t:'free', idx:i} : null)].filter(x => x);
-        for (let s of srcs) if (this.isValid(s.c, 'found', s.c.suit)) { this.move(s.c, 'found', s.c.suit, true); changed = true; break; }
-        if (changed) setTimeout(() => this.autoSweep(), 450);
+        if(this.isValid(this.selected,'found',this.selected.suit)){
+            const s=document.querySelector(`[data-type="found"][data-suit="${this.selected.suit}"]`);
+            if(s)s.classList.add('hint');
+            const tp=this.state.found[this.selected.suit];
+            if(tp.length>0)tp[tp.length-1].el.classList.add('drop-target');
+            return;
+        }
+
+        for(let i=0;i<4;i++){if(this.isValid(this.selected,'free',i)){const s=document.querySelector(`[data-type="free"][data-idx="${i}"]`);if(s)s.classList.add('hint');}}
+        for(let i=0;i<8;i++){if(this.isValid(this.selected,'tab',i)){
+            const col=this.state.tab[i];
+            if(col.length===0){const s=document.querySelector(`[data-type="tab"][data-idx="${i}"]`);if(s)s.classList.add('hint');}
+            else col[col.length-1].el.classList.add('drop-target');
+        }}
     }
 
-    isValid(c, dType, dIdx) {
-        const loc = this.getLoc(c), seq = this.getSeq(c, loc); if (!seq) return false;
-        const ef = this.state.free.filter(f => f === null).length, et = this.state.tab.filter(t => t.length === 0).length;
-        const max = (ef + 1) * Math.pow(2, (dType === 'tab' && this.state.tab[dIdx].length === 0) ? Math.max(0, et - 1) : et);
-        if (seq.length > max) return false;
-        if (dType === 'free') return seq.length === 1 && this.state.free[dIdx] === null;
-        if (dType === 'found') return seq.length === 1 && c.suit === dIdx && (this.state.found[dIdx].length === 0 ? c.rank === 1 : c.rank === this.state.found[dIdx][this.state.found[dIdx].length-1].rank + 1);
-        if (dType === 'tab') { const col = this.state.tab[dIdx]; if (!col.length) return true; const top = col[col.length-1]; return c.color !== top.color && c.rank === top.rank - 1; }
+    getSeq(c,loc){
+        if(loc.type!=='tab')return[c];
+        const col=this.state.tab[loc.idx],idx=col.indexOf(c);
+        if(idx===-1)return null;
+        const s=col.slice(idx);
+        for(let i=0;i<s.length-1;i++)if(s[i].color===s[i+1].color||s[i].rank!==s[i+1].rank+1)return null;
+        return s;
+    }
+
+    isValid(c,dType,dIdx){
+        const loc=this.getLoc(c),seq=this.getSeq(c,loc);if(!seq)return false;
+        const ef=this.state.free.filter(f=>f===null).length;
+        const et=this.state.tab.filter(t=>t.length===0).length;
+        const max=(ef+1)*Math.pow(2,(dType==='tab'&&this.state.tab[dIdx]&&this.state.tab[dIdx].length===0)?Math.max(0,et-1):et);
+        if(seq.length>max)return false;
+        if(dType==='free')return seq.length===1&&this.state.free[dIdx]===null;
+        if(dType==='found'){
+            if(seq.length!==1||c.suit!==dIdx)return false;
+            const pile=this.state.found[dIdx];
+            return pile.length===0?c.rank===1:c.rank===pile[pile.length-1].rank+1;
+        }
+        if(dType==='tab'){
+            const col=this.state.tab[dIdx];
+            if(loc.type==='tab'&&loc.idx===dIdx)return false;
+            if(!col.length)return true;
+            const top=col[col.length-1];
+            return c.color!==top.color&&c.rank===top.rank-1;
+        }
         return false;
     }
 
-    move(c, dType, dIdx, sweep = false) {
-        if (!sweep && !this.isRestoring) this.redoStack = [];
-        const data = JSON.parse(JSON.stringify(this.state, (k,v) => k==='el'?undefined:v)); data.moveType = dType;
-        this.history.push(data); this.lastMovedId = c.id;
-        const loc = this.getLoc(c), seq = this.getSeq(c, loc);
-        if (loc.type === 'tab') this.state.tab[loc.idx].splice(this.state.tab[loc.idx].indexOf(c)); else if (loc.type === 'free') this.state.free[loc.idx] = null;
-        if (dType === 'tab') this.state.tab[dIdx].push(...seq); else if (dType === 'free') this.state.free[dIdx] = c; else if (dType === 'found') this.state.found[dIdx].push(c);
-        this.selected = null; this.render();
-        if (!sweep) setTimeout(() => this.autoSweep(), 500);
+    move(c,dType,dIdx){
+        if(!this.isRestoring)this.redoStack=[];
+        const snap=JSON.parse(JSON.stringify(this.state,(k,v)=>k==='el'?undefined:v));
+        this.history.push(snap);
+        const loc=this.getLoc(c),seq=this.getSeq(c,loc);
+        if(loc.type==='tab')this.state.tab[loc.idx].splice(this.state.tab[loc.idx].indexOf(c));
+        else if(loc.type==='free')this.state.free[loc.idx]=null;
+        if(dType==='tab')this.state.tab[dIdx].push(...seq);
+        else if(dType==='free')this.state.free[dIdx]=c;
+        else if(dType==='found')this.state.found[dIdx].push(c);
+        this.selected=null;this.hintedCard=null;
+        this.setStatusMessage('');
+        this.updatePathStatus();
+        this.render();
     }
 
-    giveHint() {
-        const srcs = [...this.state.tab.map(col => col.length ? col[col.length-1] : null), ...this.state.free].filter(x => x);
-        for (let c of srcs) for (let i = 0; i < 8; i++) if (this.isValid(c, 'tab', i)) { c.el.classList.add('wink'); setTimeout(() => c.el.classList.remove('wink'), 1600); return; }
+    // ── Strict 1-step Undo / Redo ─────────────────────────────────────────────
+    undo(){
+        if(!this.history.length||this.isRewinding)return;
+        this.performSingleUndo();
+        this.updatePathStatus();this.render();
     }
 
-    getLoc(c) {
-        for(let i=0; i<8; i++) if(this.state.tab[i].includes(c)) return {type:'tab', idx:i};
-        for(let i=0; i<4; i++) if(this.state.free[i] === c) return {type:'free', idx:i};
-        return {type:'none', idx:-1};
+    performSingleUndo(){
+        if(!this.history.length)return;
+        this.solveToken=(this.solveToken||0)+1;
+        const cur=JSON.parse(JSON.stringify(this.state,(k,v)=>k==='el'?undefined:v));
+        this.redoStack.push(cur);
+        this.restoreState(this.history.pop());
     }
 
-    showHints() {
-        ['free', 'tab'].forEach(t => this.state[t].forEach((_, i) => { if(this.isValid(this.selected, t, i)) document.querySelector(`[data-type="${t}"][data-idx="${i}"]`).classList.add('hint'); }));
-        if(this.isValid(this.selected, 'found', this.selected.suit)) document.querySelector(`[data-type="found"][data-suit="${this.selected.suit}"]`).classList.add('hint');
+    redo(){
+        if(!this.redoStack.length||this.isRewinding)return;
+        this.solveToken=(this.solveToken||0)+1;
+        this.isRestoring=true;
+        const next=this.redoStack.pop();
+        const cur=JSON.parse(JSON.stringify(this.state,(k,v)=>k==='el'?undefined:v));
+        this.history.push(cur);
+        this.restoreState(next);
+        this.isRestoring=false;
+        this.solveToken=0;
+        this.updatePathStatus();this.render();
     }
 
-    undo() {
-        if (!this.history.length) return;
-        const perform = () => {
-            const current = JSON.parse(JSON.stringify(this.state, (k,v) => k==='el'?undefined:v));
-            current.moveType = this.history[this.history.length-1].moveType;
-            this.redoStack.push(current);
-            const last = this.history.pop();
-            this.state.free = last.free.map(c => c ? this.cards.find(oc => oc.id === c.id) : null);
-            Object.keys(this.state.found).forEach(s => this.state.found[s] = last.found[s].map(c => this.cards.find(oc => oc.id === c.id)));
-            this.state.tab = last.tab.map(col => col.map(c => this.cards.find(oc => oc.id === c.id)));
+    restoreState(s){
+        this.state.free=s.free.map(c=>c?this.cards.find(oc=>oc.id===c.id):null);
+        Object.keys(this.state.found).forEach(sk=>{this.state.found[sk]=s.found[sk].map(c=>this.cards.find(oc=>oc.id===c.id));});
+        this.state.tab=s.tab.map(col=>col.map(c=>this.cards.find(oc=>oc.id===c.id)));
+        this.selected=null;this.hintedCard=null;this.isChecking=false;
+    }
+
+    // ── Hint ─────────────────────────────────────────────────────────────────
+    giveHint(){
+        if(this.isRewinding)return;
+        if(this.isChecking)return;
+        if(this.isOnPath&&this.currentPathStep&&this.currentPathStep.nextCardId){
+            const next=this.cards.find(c=>c.id===this.currentPathStep.nextCardId);
+            if(next){this.hintedCard=next;this.render();}
+            return;
+        }
+        // Off path & stuck — enable and glow Rewind
+        const rb=document.getElementById('btn-rewind');
+        if(rb){rb.disabled=false;rb.classList.add('rewind-needed');}
+    }
+
+    // ── Rewind: step back until we hit any golden path state ─────────────────
+    rewind(){
+        const rb=document.getElementById('btn-rewind');
+        if(this.isRewinding||(rb&&rb.disabled))return;
+        if(this.isOnPath){this.setStatusMessage('Already on the winning solve path!');return;}
+        this.isRewinding=true;
+        this.setStatusMessage('Rewinding back to the solve path…');
+        const step=()=>{
+            if(!this.history.length||this.isOnPath){
+                this.isRewinding=false;
+                const rb=document.getElementById('btn-rewind');
+                if(rb){rb.disabled=true;rb.classList.remove('rewind-needed');}
+                this.setStatusMessage('Back on the solve path! Ready to play.');
+                this.render();return;
+            }
+            this.performSingleUndo();
+            // Check path without triggering new async solve
+            const currHash=this.getHash();
+            const found=this.goldenPath.findIndex(s=>s.hash===currHash);
+            if(found!==-1){this.isOnPath=true;this.currentPathStep=this.goldenPath[found];}
+            this.render();
+            setTimeout(step,175);
         };
-        const type = this.history[this.history.length-1]?.moveType; perform();
-        if (type !== 'found') while (this.history.length > 0 && this.history[this.history.length-1].moveType !== 'found') perform();
-        this.selected = null; this.lastMovedId = null; this.render();
+        step();
     }
 
-    redo() {
-        if (!this.redoStack.length) return;
-        this.isRestoring = true;
-        const perform = () => {
-            const next = this.redoStack.pop();
-            const current = JSON.parse(JSON.stringify(this.state, (k,v) => k==='el'?undefined:v));
-            current.moveType = next.moveType;
-            this.history.push(current);
-            this.state.free = next.free.map(c => c ? this.cards.find(oc => oc.id === c.id) : null);
-            Object.keys(this.state.found).forEach(s => this.state.found[s] = next.found[s].map(c => this.cards.find(oc => oc.id === c.id)));
-            this.state.tab = next.tab.map(col => col.map(c => this.cards.find(oc => oc.id === c.id)));
-        };
-        const type = this.redoStack[this.redoStack.length-1]?.moveType; perform();
-        if (type !== 'found') while (this.redoStack.length > 0 && this.redoStack[this.redoStack.length-1].moveType !== 'found') perform();
-        this.isRestoring = false; this.selected = null; this.render();
+    // ── New Game 2-tap confirm ────────────────────────────────────────────────
+    onNewClick(){
+        const btn=document.getElementById('btn-new');if(!btn)return;
+        if(btn.classList.contains('btn-confirm')){
+            clearTimeout(this.newConfirmTimeout);this.resetNewButton();this.nextGame();
+        }else{
+            btn.classList.add('btn-confirm');btn.innerText='SURE?';
+            this.setStatusMessage('Tap "SURE?" again to confirm new deal.');
+            this.newConfirmTimeout=setTimeout(()=>{this.resetNewButton();this.setStatusMessage('');},3500);
+        }
+    }
+    resetNewButton(){const b=document.getElementById('btn-new');if(b){b.classList.remove('btn-confirm');b.innerText='NEW';}}
+    nextGame(){this.init(this.currentGameIndex+1);}
+
+    getLoc(c){
+        for(let i=0;i<8;i++)if(this.state.tab[i].includes(c))return{type:'tab',idx:i};
+        for(let i=0;i<4;i++)if(this.state.free[i]===c)return{type:'free',idx:i};
+        for(const s of SUIT_KEYS)if(this.state.found[s].includes(c))return{type:'found',idx:s};
+        return{type:'none',idx:-1};
     }
 }
 
-function toggleTheme() {
-    const b = document.body, isD = b.getAttribute('data-theme') === 'dark';
-    b.setAttribute('data-theme', isD ? 'light' : 'dark');
-    document.getElementById('theme-btn').innerText = isD ? '☀️' : '🌙';
+function toggleTheme(){
+    const b=document.body,isD=b.getAttribute('data-theme')==='dark';
+    b.setAttribute('data-theme',isD?'light':'dark');
+    document.getElementById('theme-btn').innerText=isD?'☀️':'🌙';
 }
 
-const game = new FreeCellGame();
-window.onload = () => game.init();
+const game=new FreeCellGame();
+window.onload=()=>game.init(0);
 </script>
 </body>
 </html>
