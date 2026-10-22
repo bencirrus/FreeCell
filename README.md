@@ -1,6 +1,6 @@
 # 🃏FreeCell
 
-**FreeCell Solitaire in a browser for offline entertainment, built with Google AI Studio powered by Gemini.**
+**FreeCell Solitaire in a browser for offline entertainment, built with Antigravity IDE powered by Gemini from Google.**
 
 ## ♥️ How to Play
  **Touch:**
