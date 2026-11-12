@@ -3,7 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FreeCell">
     <title>free Freecell Solitaire wAARP</title>
     <style>
         :root {
@@ -309,6 +312,7 @@
             box-sizing: border-box;
             z-index: 1;
             cursor: pointer;
+            touch-action: manipulation;
             -webkit-transition: all 0.2s;
             transition: all 0.2s;
         }
@@ -411,6 +415,12 @@
             cursor: pointer;
             -webkit-transition: -webkit-transform 0.35s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.2s;
             transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.2s;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            -webkit-transform: translate3d(0, 0, 0);
+            transform: translate3d(0, 0, 0);
+            will-change: transform;
+            touch-action: manipulation;
             z-index: 100;
             left: 0;
             top: 0;
@@ -761,13 +771,25 @@
         function _solve(tabNums, freeNums, foundNums, nodeLimit) {
             nodeLimit = nodeLimit || 20000;
             function enc(s) {
-                var fStr = s.free.slice().sort(function(a, b) { return a - b; }).join(',');
-                var fdStr = s.found.join(',');
-                var tStr = s.tab.map(function(c) { return c.join(','); }).sort().join('|');
-                return fStr + ':' + fdStr + ':' + tStr;
+                var f = s.free;
+                var f0 = f[0], f1 = f[1], f2 = f[2], f3 = f[3];
+                var tmp;
+                if (f0 > f1) { tmp = f0; f0 = f1; f1 = tmp; }
+                if (f2 > f3) { tmp = f2; f2 = f3; f3 = tmp; }
+                if (f0 > f2) { tmp = f0; f0 = f2; f2 = tmp; }
+                if (f1 > f3) { tmp = f1; f1 = f3; f3 = tmp; }
+                if (f1 > f2) { tmp = f1; f1 = f2; f2 = tmp; }
+                var fStr = f0 + ',' + f1 + ',' + f2 + ',' + f3;
+                var fdStr = s.found[0] + ',' + s.found[1] + ',' + s.found[2] + ',' + s.found[3];
+                var tabCols = [];
+                for (var ti = 0; ti < 8; ti++) {
+                    tabCols.push(s.tab[ti].join(','));
+                }
+                tabCols.sort();
+                return fStr + ':' + fdStr + ':' + tabCols.join('|');
             }
             function h(s) {
-                var totalFound = s.found.reduce(function(a, b) { return a + b; }, 0);
+                var totalFound = s.found[0] + s.found[1] + s.found[2] + s.found[3];
                 var v = (52 - totalFound) * 2;
                 for (var ci = 0; ci < s.tab.length; ci++) {
                     var col = s.tab[ci];
@@ -1034,10 +1056,19 @@
                     div.setAttribute('data-val', v);
                     var face = FACE_SVGS[v] || ('<div class="suit-large">' + SUITS[s].label + '</div>');
                     div.innerHTML = '<div class="card-header"><div class="card-rank">' + v + '</div><div class="card-suit-small">' + SUITS[s].label + '</div></div><div class="card-center">' + face + '</div>';
-                    div.onclick = function(e) {
-                        e.stopPropagation();
-                        self.handleCardClick(cObj);
-                    };
+                    (function(cardObj) {
+                        var tapped = false;
+                        div.addEventListener('touchend', function(e) {
+                            e.preventDefault();
+                            tapped = true;
+                            self.handleCardClick(cardObj);
+                        }, false);
+                        div.onclick = function(e) {
+                            if (tapped) { tapped = false; return; }
+                            e.stopPropagation();
+                            self.handleCardClick(cardObj);
+                        };
+                    })(cObj);
                     board.appendChild(div);
                     cObj.el = div;
                     self.cards.push(cObj);
@@ -1310,7 +1341,9 @@
                 var self = this;
                 setTimeout(function() {
                     if (self.solveToken !== curToken) return;
-                    var result = _solve(bNums.tabN, bNums.freeN, bNums.foundN, 20000);
+                    // Use a reduced node budget for the live-check to avoid UI freeze on
+                    // slower devices (old iPad A5 chip). generateRandomGame() still uses 20000.
+                    var result = _solve(bNums.tabN, bNums.freeN, bNums.foundN, 6000);
                     if (self.solveToken !== curToken) return;
                     self.isChecking = false;
                     if (result.ok) {
@@ -1389,8 +1422,8 @@
                 card.el.style.setProperty('--tx', x + 'px');
                 card.el.style.setProperty('--ty', y + 'px');
             }
-            card.el.style.webkitTransform = 'translate(' + x + 'px,' + y + 'px)';
-            card.el.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+            card.el.style.webkitTransform = 'translate3d(' + x + 'px,' + y + 'px,0)';
+            card.el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)';
             card.el.style.zIndex = cIdx + 100;
         };
 
@@ -1589,6 +1622,7 @@
             if (!this.isRestoring) this.redoStack = [];
             var snap = JSON.parse(JSON.stringify(this.state, function(k, v) { return k === 'el' ? undefined : v; }));
             this.history.push(snap);
+            if (this.history.length > 100) { this.history.splice(0, this.history.length - 100); }
             var loc = this.getLoc(c), seq = this.getSeq(c, loc);
             if (loc.type === 'tab') this.state.tab[loc.idx].splice(this.state.tab[loc.idx].indexOf(c));
             else if (loc.type === 'free') this.state.free[loc.idx] = null;
