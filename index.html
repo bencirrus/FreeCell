@@ -236,22 +236,24 @@
 
         #scaler-wrapper {
             width: 100%;
-            display: flex;
-            justify-content: center;
             position: relative;
             overflow: hidden;
         }
 
         #scaler {
-            transform-origin: top center;
+            width: 1020px;
             position: relative;
+            left: 0;
+            top: 0;
             margin-top: 10px;
+            -webkit-transform-origin: 0 0;
+            transform-origin: 0 0;
         }
 
         #board {
             width: 1020px;
             width: var(--board-width);
-            min-height: 1000px;
+            min-height: 860px;
             position: relative;
             visibility: hidden;
         }
@@ -966,6 +968,8 @@
             window.addEventListener('resize', function() { self.resize(); });
             window.addEventListener('orientationchange', function() {
                 setTimeout(function() { self.resize(); }, 100);
+                setTimeout(function() { self.resize(); }, 300);
+                setTimeout(function() { self.resize(); }, 600);
             });
             setTimeout(function() { self.initRandom(); }, 100);
         }
@@ -974,9 +978,38 @@
             var s = document.getElementById('scaler');
             var w = document.getElementById('scaler-wrapper');
             if (!s) return;
-            var scale = Math.min(1, window.innerWidth / 1060);
+
+            var docEl = document.documentElement || document.body;
+            var availW = window.innerWidth || (docEl ? docEl.clientWidth : 1024) || 1024;
+            var availH = window.innerHeight || (docEl ? docEl.clientHeight : 768) || 768;
+
+            // Width-based scale (1060px divisor gives safe horizontal margin on all devices)
+            var scaleW = Math.min(1, availW / 1060);
+            var scale = scaleW;
+
+            // In landscape mode on tablets and larger displays (availW > availH and availH >= 500),
+            // also scale to fit the tableau rows within the available viewport height
+            if (availW > availH && availH >= 500) {
+                var controlsH = 52;
+                var verticalChrome = controlsH + 20; // 52px header + 20px margins/padding
+                var usableH = availH - verticalChrome;
+                // Standard tableau height accommodating up to 8 stacked cards:
+                // 180px top slots + 7 * 75px card offsets + 160px card height = 865px
+                var targetBoardH = 865;
+                if (usableH > 300) {
+                    var scaleH = Math.min(1, usableH / targetBoardH);
+                    scale = Math.min(scaleW, scaleH);
+                }
+            }
+
+            // Precisely center the board horizontally
+            var scaledW = 1010 * scale;
+            var leftOffset = Math.max(0, Math.floor((availW - scaledW) / 2));
+
+            s.style.left = leftOffset + 'px';
             s.style.webkitTransform = 'scale(' + scale + ')';
             s.style.transform = 'scale(' + scale + ')';
+
             if (w) {
                 var maxCards = 7;
                 if (this.state && this.state.tab) {
@@ -984,7 +1017,7 @@
                         if (this.state.tab[i].length > maxCards) maxCards = this.state.tab[i].length;
                     }
                 }
-                var boardH = Math.max(820, 180 + maxCards * 75 + 180);
+                var boardH = Math.max(820, 180 + maxCards * 75 + 170);
                 w.style.height = Math.ceil(boardH * scale + 20) + 'px';
             }
         };
