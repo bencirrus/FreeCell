@@ -985,11 +985,15 @@
 
         function FreeCellGame() {
             this.cards = [];
+            this.cardById = {};   // O(1) card lookup by id
+            this._slotEls = null; // cached slot NodeList
+            this._slotPos = {};   // cached {x, y} per slot selector key
             this.selected = null;
             this.history = [];
             this.redoStack = [];
             this.currentGameIndex = 0;
             this.goldenPath = [];
+            this.goldenPathMap = {};  // hash -> index for O(1) path lookups
             this.isOnPath = true;
             this.isChecking = false;   // true while async re-solve is running
             this.isRewinding = false;
@@ -1058,6 +1062,7 @@
             s.style.left = leftOffset + 'px';
             s.style.webkitTransform = 'scale(' + scale + ')';
             s.style.transform = 'scale(' + scale + ')';
+            this._slotPos = {};  // positions changed — invalidate cache
 
             if (w) {
                 var maxCards = 7;
@@ -1099,6 +1104,7 @@
                     board.appendChild(div);
                     cObj.el = div;
                     self.cards.push(cObj);
+                    self.cardById[cObj.id] = cObj;
                 });
             });
         };
@@ -1197,13 +1203,15 @@
             var self = this;
             gd.deal.forEach(function(col, ci) {
                 col.forEach(function(cId) {
-                    var c = self.cards.find(function(x) { return x.id === cId; });
+                    var c = self.cardById[cId];
                     if (c) self.state.tab[ci].push(c);
                 });
             });
 
             this.buildGoldenPath(gd);
             this.updatePathStatus();
+            // Cache slot elements once per game init (they never change between games)
+            this._slotEls = null;
 
             var winMsg = document.getElementById('win-msg');
             if (winMsg) winMsg.style.display = 'none';
@@ -1253,6 +1261,11 @@
                 }
             }
             this.goldenPath.push({ hash: hash(), nextCardId: null });
+            // Build O(1) lookup map
+            this.goldenPathMap = {};
+            for (var gpi = 0; gpi < this.goldenPath.length; gpi++) {
+                this.goldenPathMap[this.goldenPath[gpi].hash] = gpi;
+            }
         };
 
         // ── Live board hash (same format as simulation hash) ─────────────────────
@@ -1343,12 +1356,17 @@
             }
             newSteps.push({ hash: hash(), nextCardId: null });
             this.goldenPath = prefix.concat(newSteps);
+            // Rebuild O(1) lookup map
+            this.goldenPathMap = {};
+            for (var gpi = 0; gpi < this.goldenPath.length; gpi++) {
+                this.goldenPathMap[this.goldenPath[gpi].hash] = gpi;
+            }
         };
 
         // ── Path status: check golden path, or async-resolve if off it ────────────
         FreeCellGame.prototype.updatePathStatus = function() {
             var currHash = this.getHash();
-            var pathIdx = this.goldenPath.findIndex(function(step) { return step.hash === currHash; });
+            var pathIdx = this.goldenPathMap.hasOwnProperty(currHash) ? this.goldenPathMap[currHash] : -1;
             var indicator = document.getElementById('path-indicator');
 
             if (pathIdx !== -1) {
@@ -1385,7 +1403,8 @@
                             // Solvable! Adopt this as the new golden path
                             self._adoptPath(result.path);
                             // Re-run status check — should now be on path
-                            var newIdx = self.goldenPath.findIndex(function(s) { return s.hash === self.getHash(); });
+                            var newHash = self.getHash();
+                        var newIdx = self.goldenPathMap.hasOwnProperty(newHash) ? self.goldenPathMap[newHash] : -1;
                             if (newIdx !== -1) {
                                 self.isOnPath = true;
                                 self.currentPathStep = self.goldenPath[newIdx];
@@ -1417,14 +1436,21 @@
 
         FreeCellGame.prototype.render = function() {
             var self = this;
-            var slots = document.querySelectorAll('.slot');
+            // Use cached slots (queried once per game; slots never change between games)
+            if (!this._slotEls) {
+                this._slotEls = document.querySelectorAll('.slot');
+                // Wire onclick once per slot (they never change)
+                for (var wi = 0; wi < this._slotEls.length; wi++) {
+                    (function(s) {
+                        s.onclick = function() {
+                            self.handleSlotClick(s.getAttribute('data-type'), s.getAttribute('data-idx') || s.getAttribute('data-suit'));
+                        };
+                    })(this._slotEls[wi]);
+                }
+            }
+            var slots = this._slotEls;
             for (var sIdx = 0; sIdx < slots.length; sIdx++) {
-                (function(s) {
-                    s.classList.remove('hint');
-                    s.onclick = function() {
-                        self.handleSlotClick(s.getAttribute('data-type'), s.getAttribute('data-idx') || s.getAttribute('data-suit'));
-                    };
-                })(slots[sIdx]);
+                slots[sIdx].classList.remove('hint');
             }
             this.state.tab.forEach(function(col, i) {
                 col.forEach(function(c, ci) { self.updatePos(c, 'tab', i, ci); });
@@ -1455,19 +1481,25 @@
             }
             var winMsg = document.getElementById('win-msg');
             if (winMsg) winMsg.style.display = total === 52 ? 'block' : 'none';
-            this.resize();
+            // Skip layout recalculation during sweep/rewind — viewport hasn't changed
+            if (!this.isSweeping && !this.isRewinding) {
+                this.resize();
+            }
         };
 
         FreeCellGame.prototype.updatePos = function(card, type, gIdx, cIdx) {
-            var sel = '[data-type="' + type + '"]' + (type === 'found' ? '[data-suit="' + gIdx + '"]' : '[data-idx="' + gIdx + '"]');
-            var slot = document.querySelector(sel);
-            if (!slot) return;
-            var x = slot.offsetLeft;
-            var y = slot.offsetTop + (type === 'tab' ? cIdx * 75 : 0);
-            if (card.el.style.setProperty) {
-                card.el.style.setProperty('--tx', x + 'px');
-                card.el.style.setProperty('--ty', y + 'px');
+            // Cache slot base positions keyed by slot selector — invalidated on resize
+            var slotKey = type + gIdx;
+            var pos = this._slotPos[slotKey];
+            if (!pos) {
+                var sel = '[data-type="' + type + '"]' + (type === 'found' ? '[data-suit="' + gIdx + '"]' : '[data-idx="' + gIdx + '"]');
+                var slot = document.querySelector(sel);
+                if (!slot) return;
+                pos = { x: slot.offsetLeft, y: slot.offsetTop };
+                this._slotPos[slotKey] = pos;
             }
+            var x = pos.x;
+            var y = pos.y + (type === 'tab' ? cIdx * 75 : 0);
             card.el.style.webkitTransform = 'translate3d(' + x + 'px,' + y + 'px,0)';
             card.el.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)';
             card.el.style.zIndex = cIdx + 100;
@@ -1690,9 +1722,31 @@
             return false;
         };
 
+        FreeCellGame.prototype._snapState = function() {
+            // Compact snapshot: store only card IDs (no el refs, no JSON stringify overhead)
+            var tab = new Array(8);
+            for (var ti = 0; ti < 8; ti++) {
+                var col = this.state.tab[ti], ids = new Array(col.length);
+                for (var ci = 0; ci < col.length; ci++) ids[ci] = col[ci].id;
+                tab[ti] = ids;
+            }
+            var free = new Array(4);
+            for (var fi = 0; fi < 4; fi++) free[fi] = this.state.free[fi] ? this.state.free[fi].id : null;
+            return {
+                tab: tab,
+                free: free,
+                found: {
+                    h: this.state.found.h.length,
+                    d: this.state.found.d.length,
+                    c: this.state.found.c.length,
+                    s: this.state.found.s.length
+                }
+            };
+        };
+
         FreeCellGame.prototype.move = function(c, dType, dIdx) {
             if (!this.isRestoring) this.redoStack = [];
-            var snap = JSON.parse(JSON.stringify(this.state, function(k, v) { return k === 'el' ? undefined : v; }));
+            var snap = this._snapState();
             this.history.push(snap);
             if (this.history.length > 100) { this.history.splice(0, this.history.length - 100); }
             var loc = this.getLoc(c), seq = this.getSeq(c, loc);
@@ -1704,7 +1758,11 @@
             this.selected = null;
             this.hintedCard = null;
             this.setStatusMessage('');
-            this.updatePathStatus();
+            // Skip path re-check during sweep/rewind — it's useless noise that
+            // queues background _solve() calls competing with the animation timer.
+            if (!this.isSweeping && !this.isRewinding) {
+                this.updatePathStatus();
+            }
             this.render();
         };
 
@@ -1719,8 +1777,7 @@
         FreeCellGame.prototype.performSingleUndo = function() {
             if (!this.history.length) return;
             this.solveToken = (this.solveToken || 0) + 1;
-            var cur = JSON.parse(JSON.stringify(this.state, function(k, v) { return k === 'el' ? undefined : v; }));
-            this.redoStack.push(cur);
+            this.redoStack.push(this._snapState());
             this.restoreState(this.history.pop());
         };
 
@@ -1729,8 +1786,7 @@
             this.solveToken = (this.solveToken || 0) + 1;
             this.isRestoring = true;
             var next = this.redoStack.pop();
-            var cur = JSON.parse(JSON.stringify(this.state, function(k, v) { return k === 'el' ? undefined : v; }));
-            this.history.push(cur);
+            this.history.push(this._snapState());
             this.restoreState(next);
             this.isRestoring = false;
             this.solveToken = 0;
@@ -1740,19 +1796,34 @@
 
         FreeCellGame.prototype.restoreState = function(s) {
             var self = this;
-            this.state.free = s.free.map(function(c) {
-                return c ? self.cards.find(function(oc) { return oc.id === c.id; }) : null;
-            });
-            Object.keys(this.state.found).forEach(function(sk) {
-                self.state.found[sk] = s.found[sk].map(function(c) {
-                    return self.cards.find(function(oc) { return oc.id === c.id; });
-                });
-            });
-            this.state.tab = s.tab.map(function(col) {
-                return col.map(function(c) {
-                    return self.cards.find(function(oc) { return oc.id === c.id; });
-                });
-            });
+            // Compact snapshot: free is [id|null], found is {h,d,c,s} counts,
+            // tab is [[id,id,...], ...]
+            this.state.free = new Array(4);
+            for (var fi = 0; fi < 4; fi++) {
+                this.state.free[fi] = s.free[fi] ? self.cardById[s.free[fi]] : null;
+            }
+            // Rebuild found piles from counts using the full cards array order
+            this.state.found = { h: [], d: [], c: [], s: [] };
+            var sfd = s.found;
+            for (var si = 0; si < self.cards.length; si++) {
+                var card = self.cards[si];
+                var suit = card.suit;
+                if (sfd[suit] && card.rank <= sfd[suit]) {
+                    self.state.found[suit].push(card);
+                }
+            }
+            // Sort each suit pile by rank ascending (they must be in order A,2,...K)
+            var suits = ['h', 'd', 'c', 's'];
+            for (var si2 = 0; si2 < 4; si2++) {
+                self.state.found[suits[si2]].sort(function(a, b) { return a.rank - b.rank; });
+            }
+            this.state.tab = new Array(8);
+            for (var ti = 0; ti < 8; ti++) {
+                var col = s.tab[ti];
+                var newCol = new Array(col.length);
+                for (var ci = 0; ci < col.length; ci++) newCol[ci] = self.cardById[col[ci]];
+                this.state.tab[ti] = newCol;
+            }
             this.selected = null;
             this.hintedCard = null;
             this.isChecking = false;
@@ -1764,16 +1835,16 @@
             // Don't bail on isChecking — if we're on path the hash matched synchronously
             if (this.isOnPath && this.currentPathStep && this.currentPathStep.nextCardId) {
                 var self = this;
-                var next = this.cards.find(function(c) { return c.id === self.currentPathStep.nextCardId; });
+                var next = this.cardById[this.currentPathStep.nextCardId];
                 if (!next) return;
                 // Second tap on same hinted card → auto-move it to its destination
+                // Note: move() already calls render() internally — no second call needed.
                 if (this.hintedCard && this.hintedCard.id === next.id) {
                     this.hintedCard = null;
                     var step = this.currentPathStep;
                     if (step.toType && step.toIdx !== undefined && step.toIdx !== null) {
                         if (this.isValid(next, step.toType, step.toIdx)) {
                             this.move(next, step.toType, step.toIdx);
-                            this.render();
                         }
                     }
                     return;
@@ -1824,7 +1895,7 @@
             // Condition 3: On golden path, and all remaining steps to completion are foundation moves
             if (this.isOnPath && this.goldenPath && this.goldenPath.length > 0) {
                 var currHash = this.getHash();
-                var currIdx = this.goldenPath.findIndex(function(s) { return s.hash === currHash; });
+                var currIdx = this.goldenPathMap.hasOwnProperty(currHash) ? this.goldenPathMap[currHash] : -1;
                 if (currIdx !== -1 && currIdx < this.goldenPath.length - 1) {
                     var rem = this.goldenPath.slice(currIdx, this.goldenPath.length - 1);
                     if (rem.length > 0 && rem.every(function(s) { return s.toType === 'found'; })) return true;
@@ -1961,9 +2032,13 @@
 
                 // 3. Fallback: check golden path step if available
                 if (!cardToMove && self.currentPathStep && self.currentPathStep.nextCardId) {
-                    var next = self.cards.find(function(c) { return c.id === self.currentPathStep.nextCardId; });
+                    var next = self.cardById[self.currentPathStep.nextCardId];
                     if (next && self.isValid(next, self.currentPathStep.toType, self.currentPathStep.toIdx)) {
                         self.move(next, self.currentPathStep.toType, self.currentPathStep.toIdx);
+                        // Lightweight O(1) path step sync (move() skips updatePathStatus during sweep)
+                        var curH = self.getHash();
+                        var curIdx = self.goldenPathMap.hasOwnProperty(curH) ? self.goldenPathMap[curH] : -1;
+                        if (curIdx !== -1) { self.isOnPath = true; self.currentPathStep = self.goldenPath[curIdx]; }
                         setTimeout(step, 75);
                         return;
                     }
@@ -1971,6 +2046,10 @@
 
                 if (cardToMove) {
                     self.move(cardToMove, 'found', cardToMove.suit);
+                    // Lightweight O(1) path step sync after foundation move
+                    var curH = self.getHash();
+                    var curIdx = self.goldenPathMap.hasOwnProperty(curH) ? self.goldenPathMap[curH] : -1;
+                    if (curIdx !== -1) { self.isOnPath = true; self.currentPathStep = self.goldenPath[curIdx]; }
                     setTimeout(step, 75);
                 } else {
                     self.isSweeping = false;
@@ -2002,7 +2081,7 @@
                 self.performSingleUndo();
                 // Check path without triggering new async solve
                 var currHash = self.getHash();
-                var found = self.goldenPath.findIndex(function(s) { return s.hash === currHash; });
+                var found = self.goldenPathMap.hasOwnProperty(currHash) ? self.goldenPathMap[currHash] : -1;
                 if (found !== -1) {
                     self.isOnPath = true;
                     self.currentPathStep = self.goldenPath[found];
